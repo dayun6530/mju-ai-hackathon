@@ -82,7 +82,7 @@ export default function LoginModal({ text, logoUrl, onClose, onSuccess }) {
         return
       }
       if (view === 'forgot') {
-        const result = findAccount(email)
+        const result = await findAccount(email)
         if (!result.ok) {
           setError(text[errorText[result.error]])
           return

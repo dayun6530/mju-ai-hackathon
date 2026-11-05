@@ -5,7 +5,7 @@ import { fileToDataUrl } from '@/stos/image.js';
 import LoginModal from '@/components/LoginModal.jsx';
 import { getUser, logout } from '@/auth.js';
 import { supabase } from '@/supabase.js';
-import { loadFeed, publishPost, toggleSave } from '@/feed.js';
+import { addComment, loadFeed, publishPost, toggleLike, toggleSave } from '@/feed.js';
 
 const modes = [
   { id: 'scene', icon: ClapperIcon },
@@ -268,6 +268,8 @@ export default function HomePage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [user, setUser] = useState(() => getUser());
   const [feed, setFeed] = useState({ mine: [], explore: [], saved: [] });
+  const feedRef = useRef(feed);
+  feedRef.current = feed;
   const [composerOpen, setComposerOpen] = useState(false);
   const [feedFocus, setFeedFocus] = useState(0);
   const feedLoad = useRef(0);
@@ -413,40 +415,79 @@ export default function HomePage() {
         saved={feed.saved}
         feedFocus={feedFocus}
         onUpdatePost={(id, patch) => {
-          let change = null;
-          setFeed((current) => {
-            const found = [...current.mine, ...current.explore].find((post) => post.id === id);
-            if (!found) return current;
-            const next = { ...found, ...patch(found) };
-            const bookmarkedChanged = Boolean(next.bookmarked) !== Boolean(found.bookmarked);
-            if (bookmarkedChanged && !user) {
-              change = { login: true };
-              return current;
-            }
-            if (bookmarkedChanged) {
-              next.saved = Boolean(next.bookmarked);
-              change = { id, wasSaved: Boolean(found.bookmarked) };
-            }
-            const replace = (list) => list.map((item) => (item.id === id ? { ...item, ...next } : item));
-            const saved = bookmarkedChanged
-              ? (next.bookmarked && next.userId !== user?.id
-                ? [{ ...next }, ...current.saved.filter((item) => item.id !== id)]
-                : current.saved.filter((item) => item.id !== id))
-              : replace(current.saved);
-            return {
-              mine: replace(current.mine),
-              explore: replace(current.explore),
-              saved,
-            };
-          });
-          if (change?.login) {
+          const current = feedRef.current;
+          const found = [...current.mine, ...current.explore].find((post) => post.id === id);
+          if (!found) return;
+          const next = { ...found, ...patch(found) };
+          const bookmarkedChanged = Boolean(next.bookmarked) !== Boolean(found.bookmarked);
+          const likedChanged = Boolean(next.liked) !== Boolean(found.liked);
+          const previousIds = new Set((found.comments ?? []).map((comment) => comment.id));
+          const added = (next.comments ?? []).filter((comment) => !previousIds.has(comment.id));
+          if ((bookmarkedChanged || likedChanged || added.length > 0) && !user) {
             setLoginOpen(true);
             return;
           }
-          if (!change) return;
-          void toggleSave(change.id, change.wasSaved).then(async (ok) => {
-            if (!ok) setFeed(await loadFeed(user?.id || ''));
-          });
+          let action = null;
+          if (bookmarkedChanged) {
+            next.saved = Boolean(next.bookmarked);
+            action = { type: 'save', id, wasSaved: Boolean(found.bookmarked) };
+          } else if (likedChanged) {
+            action = { type: 'like', id, wasLiked: Boolean(found.liked) };
+          } else if (added.length > 0) {
+            action = { type: 'comment', id, text: added[0].text, pendingId: added[0].id };
+          }
+          const replace = (list) => list.map((item) => (item.id === id ? { ...item, ...next } : item));
+          const saved = bookmarkedChanged
+            ? (next.bookmarked && next.userId !== user?.id
+              ? [{ ...next }, ...current.saved.filter((item) => item.id !== id)]
+              : current.saved.filter((item) => item.id !== id))
+            : replace(current.saved);
+          const updated = {
+            mine: replace(current.mine),
+            explore: replace(current.explore),
+            saved,
+          };
+          feedRef.current = updated;
+          setFeed(updated);
+          if (!action) return;
+          const reload = async () => {
+            const next = await loadFeed(user?.id || '');
+            if (!next) return;
+            feedRef.current = next;
+            setFeed(next);
+          };
+          if (action.type === 'save') {
+            void toggleSave(action.id, action.wasSaved).then((ok) => {
+              if (!ok) void reload();
+            });
+          }
+          if (action.type === 'like') {
+            void toggleLike(action.id, action.wasLiked).then((ok) => {
+              if (!ok) void reload();
+            });
+          }
+          if (action.type === 'comment') {
+            void addComment(action.id, action.text).then((comment) => {
+              if (!comment) {
+                void reload();
+                return;
+              }
+              const swap = (list) => list.map((item) => (
+                item.id === action.id
+                  ? {
+                    ...item,
+                    comments: (item.comments ?? []).map((entry) => (
+                      entry.id === action.pendingId ? comment : entry
+                    )),
+                  }
+                  : item
+              ));
+              const currentFeed = feedRef.current;
+              const swapped = { mine: swap(currentFeed.mine), explore: swap(currentFeed.explore), saved: swap(currentFeed.saved) };
+              feedRef.current = swapped;
+              setFeed(swapped);
+            });
+          }
         }}
         onLogin={() => setLoginOpen(true)}
         onLogout={() => {
@@ -820,7 +861,7 @@ function PostDetail({ text, post, onClose, onUpdate }) {
               <ul className="mt-4 space-y-2">
                 {comments.map((comment) => (
                   <li key={comment.id} className="text-sm leading-5">
-                    <span className="font-semibold">{post.author}</span> {comment.text}
+                    {comment.author ? <span className="font-semibold">{comment.author}</span> : null} {comment.text}
                   </li>
                 ))}
               </ul>
