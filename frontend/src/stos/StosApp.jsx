@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import logo from '../../logo/서울을 담은 STOS 로고.png'
-import heroPhoto from '../../logo/Gemini_Generated_Image_gbc3cbgbc3cbgbc3.png'
+import logo from '../../../logo/서울을 담은 STOS 로고.png'
+import heroPhoto from '../../../logo/Gemini_Generated_Image_gbc3cbgbc3cbgbc3.png'
+import './stos.css'
+import { fileToDataUrl } from './image.js'
 
 const LANGS = [
   ['en', 'EN'],
@@ -120,7 +122,7 @@ const UI = {
     say: 'Say this',
     read: 'Read it as',
     similarNote: 'A similar experience, not a confirmed filming location.',
-    needKey: 'Groq is not connected yet. Add GROQ_API_KEY to test/.env and restart the dev server.',
+    needKey: 'Groq is not connected yet. Add GROQ_API_KEY to frontend/.env and restart the dev server.',
     empty: 'Add a sentence or a photo first.',
     failed: 'Groq could not read that yet. Try again in a moment.',
     rateLimit: 'The free search limit is full right now. Wait about a minute, then try once.',
@@ -173,7 +175,7 @@ const UI = {
     say: '이렇게 주문',
     read: '이렇게 읽어요',
     similarNote: '확인된 촬영지가 아니라 비슷한 경험입니다.',
-    needKey: '아직 Groq가 연결되지 않았습니다. test/.env에 GROQ_API_KEY를 넣고 개발 서버를 다시 켜 주세요.',
+    needKey: '아직 Groq가 연결되지 않았습니다. frontend/.env에 GROQ_API_KEY를 넣고 개발 서버를 다시 켜 주세요.',
     empty: '문장이나 사진을 먼저 넣어 주세요.',
     failed: '지금은 Groq가 읽지 못했습니다. 잠시 후 다시 시도해 주세요.',
     rateLimit: '무료 검색 한도가 방금 찼습니다. 1분 정도 뒤에 한 번만 다시 검색해 주세요.',
@@ -226,7 +228,7 @@ const UI = {
     say: '可以这样点',
     read: '这样读',
     similarNote: '这是相近的体验，不是已确认的拍摄地。',
-    needKey: 'Groq 尚未连接。请把 GROQ_API_KEY 放入 test/.env 后重启开发服务器。',
+    needKey: 'Groq 尚未连接。请把 GROQ_API_KEY 放入 frontend/.env 后重启开发服务器。',
     empty: '请先输入一句话或添加照片。',
     failed: 'Groq 这次没有读成功。请稍后再试。',
     rateLimit: '免费搜索额度刚用完。请过大约 1 分钟后再搜索一次。',
@@ -279,7 +281,7 @@ const UI = {
     say: 'こう注文',
     read: 'こう読みます',
     similarNote: '確認されたロケ地ではなく、近い体験です。',
-    needKey: 'Groqがまだ接続されていません。test/.env に GROQ_API_KEY を入れて開発サーバーを再起動してください。',
+    needKey: 'Groqがまだ接続されていません。frontend/.env に GROQ_API_KEY を入れて開発サーバーを再起動してください。',
     empty: '先に文章か写真を入れてください。',
     failed: '今はGroqが読み取れませんでした。しばらくしてからもう一度試してください。',
     rateLimit: '無料検索の上限に達しました。1分ほど待ってから、もう一度だけ検索してください。',
@@ -316,27 +318,6 @@ function ModeIcon({ name }) {
       <path d="M6 14c0 4 2.4 6 6 6s6-2 6-6c0-3-2-4.5-3-8-1.2 2-2 2.4-3 2.4S10.2 8 9 6c-1 3.5-3 5-3 8Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   )
-}
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const image = new Image()
-    const url = URL.createObjectURL(file)
-    image.onload = () => {
-      const scale = Math.min(1, 1024 / Math.max(image.width, image.height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.round(image.width * scale)
-      canvas.height = Math.round(image.height * scale)
-      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height)
-      URL.revokeObjectURL(url)
-      resolve(canvas.toDataURL('image/jpeg', 0.85))
-    }
-    image.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('image'))
-    }
-    image.src = url
-  })
 }
 
 function PlacePhoto({ src, alt, className, fallback = '' }) {
@@ -437,15 +418,15 @@ function FoodNotes({ food, copy, lang }) {
   )
 }
 
-export default function App() {
-  const [screen, setScreen] = useState('home')
-  const [mode, setMode] = useState('place')
-  const [query, setQuery] = useState('')
-  const [lang, setLang] = useState('en')
+export default function App({ session = null, onHome = null }) {
+  const [screen, setScreen] = useState(session ? 'searching' : 'home')
+  const [mode, setMode] = useState(session?.mode || 'place')
+  const [query, setQuery] = useState(session?.text || '')
+  const [lang, setLang] = useState(session?.lang || 'en')
   const [langOpen, setLangOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [photo, setPhoto] = useState('')
+  const [photo, setPhoto] = useState(session?.image || '')
   const [result, setResult] = useState(null)
   const [selected, setSelected] = useState(0)
   const [error, setError] = useState('')
@@ -475,6 +456,10 @@ export default function App() {
 
   function goHome() {
     setMenuOpen(false)
+    if (onHome) {
+      onHome()
+      return
+    }
     setScreen('home')
   }
 
@@ -517,6 +502,41 @@ export default function App() {
       setScreen('error')
     }
   }
+
+  useEffect(() => {
+    if (!session) return undefined
+    let active = true
+    const chosen = session.mode
+    const textValue = session.text
+    const image = session.image
+    ;(async () => {
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: chosen, text: textValue, image, lang: session.lang }),
+        })
+        const data = await response.json()
+        if (!active) return
+        if (!response.ok) {
+          setError(data.error || 'groq_failed')
+          setScreen('error')
+          return
+        }
+        setResult(data)
+        setSelected(0)
+        setSaved(false)
+        setScreen('results')
+      } catch {
+        if (!active) return
+        setError('groq_failed')
+        setScreen('error')
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [session])
 
   function submitExplore(event) {
     event.preventDefault()
@@ -567,13 +587,17 @@ export default function App() {
             : copy.failed
 
   return (
-    <div className={`app screen-${screen}`}>
+    <div className={`stos app screen-${screen}`}>
       <header className="topbar">
         <div className="topbar-inner">
           <div className="topbar-left">
             <Brand onClick={goHome} />
             {(screen === 'results' || screen === 'detail') && (
-              <button className="back" type="button" onClick={() => setScreen(screen === 'detail' ? 'results' : 'explore')}>
+              <button className="back" type="button" onClick={() => {
+                if (screen === 'detail') setScreen('results')
+                else if (onHome) onHome()
+                else setScreen('explore')
+              }}>
                 <span aria-hidden="true">‹</span> {copy.back}
               </button>
             )}
@@ -769,7 +793,7 @@ export default function App() {
       {screen === 'error' && (
         <main className="searching">
           <h1>{errorText}</h1>
-          <button type="button" className="solid" onClick={() => setScreen('explore')}>{copy.retry}</button>
+          <button type="button" className="solid" onClick={() => (onHome ? onHome() : setScreen('explore'))}>{copy.retry}</button>
         </main>
       )}
 
