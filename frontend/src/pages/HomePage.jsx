@@ -656,7 +656,7 @@ function FeedPanel({ open, text, loggedIn, mine, explore, saved, feedFocus, onUp
         ) : explore.length === 0 ? (
           <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
             {feedSlots.map((slot) => (
-              <div key={slot} className="aspect-[3/4] rounded-2xl bg-[#e7e9f2]" />
+              <div key={slot} className="aspect-[3/4] w-full min-w-0 rounded-2xl bg-[#e7e9f2]" />
             ))}
           </div>
         ) : (
@@ -703,15 +703,21 @@ function MyFeed({ text, posts, onOpen, blankEmpty = false }) {
   }
 
   return (
-    <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
+    <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="grid grid-cols-4 content-start items-stretch gap-3">
       {posts.map((post) => (
         <button
           key={post.id}
           type="button"
           onClick={() => onOpen(post.id)}
-          className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#e7e9f2] text-left"
+          className="relative aspect-[3/4] w-full min-w-0 overflow-hidden rounded-2xl bg-black text-left"
         >
-          <img src={post.url} alt="" className="size-full object-cover" />
+          <img
+            src={post.url}
+            alt=""
+            className="absolute inset-0 size-full"
+            style={{ objectFit: 'contain' }}
+          />
           {post.caption ? (
             <span className="absolute inset-x-0 bottom-0 line-clamp-2 bg-black/45 px-2 py-1.5 text-[10px] leading-4 font-medium text-white">
               {post.caption}
@@ -719,6 +725,7 @@ function MyFeed({ text, posts, onOpen, blankEmpty = false }) {
           ) : null}
         </button>
       ))}
+      </div>
     </div>
   );
 }
