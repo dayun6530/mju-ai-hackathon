@@ -12,59 +12,250 @@ const modes = [
   { id: 'food', icon: FoodIcon },
 ];
 
-const text = {
-  headline: ['K-콘텐츠에서', '실제 경험으로'],
-  sub: '좋아하는 K-콘텐츠 속 장면과 맛을 서울에서 찾아보세요.',
-  placeholder: '예: "이 드라마 촬영지가 어디야?"',
-  attachPhoto: '사진 첨부',
-  photoRemove: '첨부 삭제',
-  searchLabel: '장면, 분위기, 음식을 입력',
-  searchButton: '검색',
-  modes: {
-    scene: { title: '장소 찾기', line: '"어디서 찍은 장소일까?"' },
-    food: { title: '음식 알아보기', line: '"이 음식이 뭐야?"' },
+const languages = [
+  { id: 'ko', label: '한국어' },
+  { id: 'en', label: 'EN' },
+  { id: 'zh', label: '中文' },
+  { id: 'ja', label: '日本語' },
+];
+
+const copy = {
+  ko: {
+    headline: ['K-콘텐츠에서', '실제 경험으로'],
+    sub: '좋아하는 K-콘텐츠 속 장면과 맛을 서울에서 찾아보세요.',
+    placeholder: '예: "이 드라마 촬영지가 어디야?"',
+    attachPhoto: '사진 첨부',
+    photoRemove: '첨부 삭제',
+    searchLabel: '장면, 분위기, 음식을 입력',
+    searchButton: '검색',
+    modes: {
+      scene: { title: '장소 찾기', line: '"어디서 찍은 장소일까?"' },
+      food: { title: '음식 알아보기', line: '"이 음식이 뭐야?"' },
+    },
+    feedOpen: '피드 열기',
+    feedClose: '피드 닫기',
+    feedSearch: '해시태그 검색',
+    feedTabs: ['내 피드', '탐색', '저장됨'],
+    community: '커뮤니티',
+    profile: '프로필',
+    login: '로그인',
+    logout: '로그아웃',
+    createFeed: '피드 생성',
+    newPost: '새 게시물 만들기',
+    dropPhoto: '사진과 동영상을 여기에 끌어다 놓으세요',
+    chooseFile: '컴퓨터에서 선택',
+    preview: '미리보기',
+    next: '다음',
+    share: '공유하기',
+    caption: '캡션 추가...',
+    back: '이전',
+    emptyFeed: '아직 게시물이 없어요.',
+    loginRequired: '"{feature}" 기능은 로그인 후 이용하실 수 있습니다.',
+    postDetail: '게시물 상세',
+    like: '좋아요',
+    comment: '댓글',
+    save: '저장',
+    commentPlaceholder: '댓글을 남겨보세요...',
+    commentSubmit: '댓글 등록',
+    email: '이메일',
+    password: '비밀번호',
+    signup: '회원가입',
+    forgot: '비밀번호 찾기',
+    loginNote: '피드는 로그인 후 이용할 수 있어요.',
+    close: '닫기',
+    confirmPassword: '비밀번호 확인',
+    signupSubmit: '가입하기',
+    forgotNext: '다음',
+    resetTitle: '새 비밀번호',
+    resetSubmit: '변경하기',
+    backToLogin: '로그인으로',
+    errorRequired: '필요한 항목을 입력해 주세요.',
+    errorEmail: '이메일 형식을 확인해 주세요.',
+    errorShort: '비밀번호는 8자 이상이어야 해요.',
+    errorMismatch: '비밀번호가 서로 달라요.',
+    errorExists: '이미 가입된 이메일이에요.',
+    errorInvalid: '이메일 또는 비밀번호가 올바르지 않아요.',
+    errorMissing: '가입되지 않은 이메일이에요.',
+    resetDone: '비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.',
+    languageLabel: '언어: 한국어',
   },
-  feedOpen: '피드 열기',
-  feedClose: '피드 닫기',
-  feedSearch: '게시물, 장소, 해시태그 검색',
-  feedTabs: ['내 피드', '탐색', '저장됨'],
-  profile: '프로필',
-  login: '로그인',
-  logout: '로그아웃',
-  createFeed: '피드 생성',
-  newPost: '새 게시물 만들기',
-  dropPhoto: '사진과 동영상을 여기에 끌어다 놓으세요',
-  chooseFile: '컴퓨터에서 선택',
-  preview: '미리보기',
-  next: '다음',
-  share: '공유하기',
-  caption: '캡션 추가...',
-  back: '이전',
-  emptyFeed: '아직 게시물이 없어요.',
-  email: '이메일',
-  password: '비밀번호',
-  signup: '회원가입',
-  forgot: '비밀번호 찾기',
-  loginNote: '피드는 로그인 후 이용할 수 있어요.',
-  close: '닫기',
-  confirmPassword: '비밀번호 확인',
-  signupSubmit: '가입하기',
-  forgotNext: '다음',
-  resetTitle: '새 비밀번호',
-  resetSubmit: '변경하기',
-  backToLogin: '로그인으로',
-  errorRequired: '필요한 항목을 입력해 주세요.',
-  errorEmail: '이메일 형식을 확인해 주세요.',
-  errorShort: '비밀번호는 8자 이상이어야 해요.',
-  errorMismatch: '비밀번호가 서로 달라요.',
-  errorExists: '이미 가입된 이메일이에요.',
-  errorInvalid: '이메일 또는 비밀번호가 올바르지 않아요.',
-  errorMissing: '가입되지 않은 이메일이에요.',
-  errorConfirm: '이메일로 보낸 확인을 마친 뒤 로그인해 주세요.',
-  errorConfig: 'Supabase 연결 정보를 찾지 못했습니다.',
-  errorRate: '가입 요청이 잠시 몰렸습니다. 조금 뒤에 다시 시도해 주세요.',
-  signupPending: '가입 메일을 보냈어요. 확인 링크를 누른 뒤 로그인해 주세요.',
-  resetDone: '비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.',
+  en: {
+    headline: ['From K-Content', 'to Real Experience'],
+    sub: 'Discover the scenes and flavors from your favorite K-content in Seoul.',
+    placeholder: 'Try "the filming location of this drama"',
+    attachPhoto: 'Add a photo',
+    photoRemove: 'Remove photo',
+    searchLabel: 'Describe a scene, vibe, or food',
+    searchButton: 'Search',
+    modes: {
+      scene: { title: 'Find a Scene', line: '"Where was this filmed?"' },
+      food: { title: 'Explore Food', line: '"What\'s this food?"' },
+    },
+    feedOpen: 'Open feed',
+    feedClose: 'Close feed',
+    feedSearch: 'Search hashtags',
+    feedTabs: ['My feed', 'Explore', 'Saved'],
+    community: 'Community',
+    profile: 'Profile',
+    login: 'Log in',
+    logout: 'Log out',
+    createFeed: 'Create post',
+    newPost: 'Create new post',
+    dropPhoto: 'Drag photos and videos here',
+    chooseFile: 'Select from computer',
+    preview: 'Preview',
+    next: 'Next',
+    share: 'Share',
+    caption: 'Write a caption...',
+    back: 'Back',
+    emptyFeed: 'No posts yet.',
+    loginRequired: '"{feature}" is available after you log in.',
+    postDetail: 'Post',
+    like: 'Like',
+    comment: 'Comment',
+    save: 'Save',
+    commentPlaceholder: 'Add a comment...',
+    commentSubmit: 'Post comment',
+    email: 'Email',
+    password: 'Password',
+    signup: 'Sign up',
+    forgot: 'Forgot password',
+    loginNote: 'The feed is available after you log in.',
+    close: 'Close',
+    confirmPassword: 'Confirm password',
+    signupSubmit: 'Sign up',
+    forgotNext: 'Next',
+    resetTitle: 'New password',
+    resetSubmit: 'Update',
+    backToLogin: 'Back to log in',
+    errorRequired: 'Please fill in the required fields.',
+    errorEmail: 'Check the email format.',
+    errorShort: 'Password must be at least 8 characters.',
+    errorMismatch: 'Passwords do not match.',
+    errorExists: 'This email is already registered.',
+    errorInvalid: 'Email or password is incorrect.',
+    errorMissing: 'No account found for this email.',
+    resetDone: 'Password updated. Log in with the new password.',
+    languageLabel: 'Language: English',
+  },
+  zh: {
+    headline: ['从K-内容', '到真实体验'],
+    sub: '在首尔找到你喜欢的K-内容中的场景和味道。',
+    placeholder: '例："这部剧的拍摄地在哪里？"',
+    attachPhoto: '添加照片',
+    photoRemove: '移除照片',
+    searchLabel: '输入场景或美食',
+    searchButton: '搜索',
+    modes: {
+      scene: { title: '查找地点', line: '"这是在哪里拍的？"' },
+      food: { title: '了解美食', line: '"这是什么食物？"' },
+    },
+    feedOpen: '打开动态',
+    feedClose: '关闭动态',
+    feedSearch: '搜索话题标签',
+    feedTabs: ['我的动态', '探索', '已保存'],
+    community: '社区',
+    profile: '个人资料',
+    login: '登录',
+    logout: '退出',
+    createFeed: '发布动态',
+    newPost: '新建帖子',
+    dropPhoto: '将照片和视频拖到这里',
+    chooseFile: '从电脑中选择',
+    preview: '预览',
+    next: '下一步',
+    share: '分享',
+    caption: '添加说明...',
+    back: '返回',
+    emptyFeed: '还没有帖子。',
+    loginRequired: '“{feature}”需登录后使用。',
+    postDetail: '帖子详情',
+    like: '点赞',
+    comment: '评论',
+    save: '保存',
+    commentPlaceholder: '留下评论...',
+    commentSubmit: '发布评论',
+    email: '邮箱',
+    password: '密码',
+    signup: '注册',
+    forgot: '找回密码',
+    loginNote: '登录后即可使用动态。',
+    close: '关闭',
+    confirmPassword: '确认密码',
+    signupSubmit: '注册',
+    forgotNext: '下一步',
+    resetTitle: '新密码',
+    resetSubmit: '更改',
+    backToLogin: '返回登录',
+    errorRequired: '请填写必填项。',
+    errorEmail: '请检查邮箱格式。',
+    errorShort: '密码至少需要 8 个字符。',
+    errorMismatch: '两次密码不一致。',
+    errorExists: '该邮箱已注册。',
+    errorInvalid: '邮箱或密码不正确。',
+    errorMissing: '未找到该邮箱的账号。',
+    resetDone: '密码已更改。请用新密码登录。',
+    languageLabel: '语言：中文',
+  },
+  ja: {
+    headline: ['Kコンテンツから', '本物の体験へ'],
+    sub: '好きなKコンテンツのシーンと味を、ソウルで見つけてください。',
+    placeholder: '例：「このドラマのロケ地はどこ？」',
+    attachPhoto: '写真を添付',
+    photoRemove: '添付を削除',
+    searchLabel: 'シーンや食べ物を入力',
+    searchButton: '検索',
+    modes: {
+      scene: { title: '場所を探す', line: '"どこで撮った場所？"' },
+      food: { title: '食べ物を知る', line: '"この食べ物は何？"' },
+    },
+    feedOpen: 'フィードを開く',
+    feedClose: 'フィードを閉じる',
+    feedSearch: 'ハッシュタグ検索',
+    feedTabs: ['マイフィード', '探す', '保存済み'],
+    community: 'コミュニティ',
+    profile: 'プロフィール',
+    login: 'ログイン',
+    logout: 'ログアウト',
+    createFeed: '投稿を作成',
+    newPost: '新しい投稿',
+    dropPhoto: '写真や動画をここにドラッグ',
+    chooseFile: 'パソコンから選択',
+    preview: 'プレビュー',
+    next: '次へ',
+    share: 'シェア',
+    caption: 'キャプションを追加...',
+    back: '戻る',
+    emptyFeed: 'まだ投稿がありません。',
+    loginRequired: '「{feature}」はログイン後に利用できます。',
+    postDetail: '投稿の詳細',
+    like: 'いいね',
+    comment: 'コメント',
+    save: '保存',
+    commentPlaceholder: 'コメントを書く...',
+    commentSubmit: 'コメントする',
+    email: 'メール',
+    password: 'パスワード',
+    signup: '新規登録',
+    forgot: 'パスワードを忘れた',
+    loginNote: 'フィードはログイン後に利用できます。',
+    close: '閉じる',
+    confirmPassword: 'パスワード確認',
+    signupSubmit: '登録する',
+    forgotNext: '次へ',
+    resetTitle: '新しいパスワード',
+    resetSubmit: '変更する',
+    backToLogin: 'ログインへ戻る',
+    errorRequired: '必要な項目を入力してください。',
+    errorEmail: 'メールの形式を確認してください。',
+    errorShort: 'パスワードは8文字以上にしてください。',
+    errorMismatch: 'パスワードが一致しません。',
+    errorExists: 'このメールはすでに登録されています。',
+    errorInvalid: 'メールまたはパスワードが正しくありません。',
+    errorMissing: '登録されていないメールです。',
+    resetDone: 'パスワードを変更しました。新しいパスワードでログインしてください。',
+    languageLabel: '言語：日本語',
+  },
 };
 
 const feedSlots = Array.from({ length: 12 }, (_, index) => index);
@@ -79,8 +270,12 @@ export default function HomePage() {
   const [feed, setFeed] = useState({ mine: [], explore: [], saved: [] });
   const [composerOpen, setComposerOpen] = useState(false);
   const [feedFocus, setFeedFocus] = useState(0);
-  const feedLoad = useRef(0);
-  const lang = 'ko';
+  const [lang, setLang] = useState('ko');
+  const text = copy[lang];
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   useEffect(() => {
     return () => {
@@ -147,6 +342,9 @@ export default function HomePage() {
         <header className="flex items-center">
           <img src={logoUrl} alt="STOS, Scene to Seoul" className="logo-mark" />
         </header>
+        <div className="absolute top-7 right-10 z-30">
+          <LanguageToggle lang={lang} label={text.languageLabel} onChange={setLang} />
+        </div>
 
         <section className="flex flex-1 flex-col py-4">
           <div className="flex flex-1 flex-col justify-start pt-5">
@@ -207,6 +405,7 @@ export default function HomePage() {
 
       <FeedPanel
         open={feedOpen}
+        text={text}
         loggedIn={Boolean(user)}
         mine={feed.mine}
         explore={feed.explore}
@@ -258,6 +457,7 @@ export default function HomePage() {
       />
       {composerOpen ? (
         <CreatePostModal
+          text={text}
           onClose={() => setComposerOpen(false)}
           onShare={async (draft) => {
             const post = await publishPost({
@@ -294,8 +494,10 @@ export default function HomePage() {
   );
 }
 
-function FeedPanel({ open, loggedIn, mine, explore, saved, feedFocus, onUpdatePost, onLogin, onLogout, onToggle }) {
+function FeedPanel({ open, text, loggedIn, posts, feedFocus, onUpdatePost, onLogin, onLogout, onToggle }) {
   const [tab, setTab] = useState(0);
+  const [query, setQuery] = useState('');
+  const [tagQuery, setTagQuery] = useState('');
   const [searched, setSearched] = useState(false);
   const [openPostId, setOpenPostId] = useState(null);
   const [query, setQuery] = useState('');
@@ -303,31 +505,42 @@ function FeedPanel({ open, loggedIn, mine, explore, saved, feedFocus, onUpdatePo
   useEffect(() => {
     if (!feedFocus) return;
     setTab(0);
+    setQuery('');
+    setTagQuery('');
     setSearched(false);
   }, [feedFocus]);
-  const currentTab = text.feedTabs[tab];
+  const activeTag = hashtagLabel(tagQuery);
   const loginGate =
-    !loggedIn && searched
-      ? '검색'
-      : !loggedIn && (currentTab === '내 피드' || currentTab === '저장됨')
-        ? currentTab
+    !loggedIn && (searched || activeTag)
+      ? text.searchButton
+      : !loggedIn && (tab === 0 || tab === 2)
+        ? text.feedTabs[tab]
         : null;
-  const openPost = [...mine, ...explore, ...saved].find((post) => post.id === openPostId) ?? null;
+  const openPost = posts.find((post) => post.id === openPostId) ?? null;
+  const taggedPosts = activeTag
+    ? posts.filter((post) => postHasTag(post, activeTag))
+    : [];
+
+  function clearSearch() {
+    setQuery('');
+    setTagQuery('');
+    setSearched(false);
+  }
 
   function chooseTab(index) {
     setTab(index);
-    setSearched(false);
+    clearSearch();
   }
 
   function onFeedSearch(event) {
     event.preventDefault();
-    const value = String(new FormData(event.currentTarget).get('query') ?? '').trim();
+    const next = query.trim();
     if (!loggedIn) {
-      if (value) setSearched(true);
+      if (next) setSearched(true);
       return;
     }
-    setQuery(value);
     setSearched(false);
+    setTagQuery(hashtagLabel(next));
   }
 
   const source = currentTab === '내 피드' ? mine : currentTab === '저장됨' ? saved : explore;
@@ -364,6 +577,8 @@ function FeedPanel({ open, loggedIn, mine, explore, saved, feedFocus, onUpdatePo
         >
           <input
             name="query"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
             className="h-full min-w-0 flex-1 bg-transparent text-sm text-black outline-none placeholder:text-[#8d8aa3]"
             placeholder={text.feedSearch}
             aria-label={text.feedSearch}
@@ -379,31 +594,45 @@ function FeedPanel({ open, loggedIn, mine, explore, saved, feedFocus, onUpdatePo
           </button>
         </form>
         <div className="mt-4 flex items-end justify-between gap-4 border-b border-[#ececf5]">
-          <div role="tablist" aria-label="커뮤니티" className="flex gap-6 px-1">
-            {text.feedTabs.map((label, index) => {
-              const selected = tab === index;
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  tabIndex={open ? 0 : -1}
-                  onClick={() => chooseTab(index)}
-                  className={`-mb-px border-b-2 pb-3 text-sm font-semibold ${
-                    selected
-                      ? 'border-violet text-violet'
-                      : 'border-transparent text-[#8d8aa3]'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+          {activeTag ? (
+            <button
+              type="button"
+              aria-label={text.back}
+              tabIndex={open ? 0 : -1}
+              onClick={clearSearch}
+              className="-mb-px flex items-center gap-1 border-b-2 border-transparent pb-3 text-sm font-semibold text-black"
+            >
+              <BackIcon />
+              {text.back}
+            </button>
+          ) : (
+            <div role="tablist" aria-label={text.community} className="flex gap-6 px-1">
+              {text.feedTabs.map((label, index) => {
+                const selected = tab === index;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    tabIndex={open ? 0 : -1}
+                    onClick={() => chooseTab(index)}
+                    className={`-mb-px border-b-2 pb-3 text-sm font-semibold ${
+                      selected
+                        ? 'border-violet text-violet'
+                        : 'border-transparent text-[#8d8aa3]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <ProfileMenu
             panelOpen={open}
             loggedIn={loggedIn}
+            text={text}
             onLogin={onLogin}
             onLogout={onLogout}
           />
@@ -411,10 +640,24 @@ function FeedPanel({ open, loggedIn, mine, explore, saved, feedFocus, onUpdatePo
         {loginGate ? (
           <div className="flex flex-1 items-center justify-center px-6 text-center">
             <p className="text-sm leading-6 font-medium text-black">
-              {`"${loginGate}" 기능은 로그인 후 이용하실 수 있습니다.`}
+              {text.loginRequired.replace('{feature}', loginGate)}
             </p>
           </div>
-        ) : currentTab === '탐색' && visible.length === 0 && !query ? (
+        ) : activeTag ? (
+          <div className="mt-4 flex min-h-0 flex-1 flex-col">
+            <h2 className="px-1 text-lg font-bold tracking-tight text-black">{activeTag}</h2>
+            <MyFeed text={text} posts={taggedPosts} onOpen={setOpenPostId} blankEmpty />
+          </div>
+        ) : tab === 0 ? (
+          <MyFeed text={text} posts={posts} onOpen={setOpenPostId} />
+        ) : tab === 2 ? (
+          <MyFeed
+            text={text}
+            posts={posts.filter((post) => post.bookmarked)}
+            onOpen={setOpenPostId}
+            blankEmpty
+          />
+        ) : (
           <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
             {feedSlots.map((slot) => (
               <div key={slot} className="aspect-[3/4] rounded-2xl bg-[#e7e9f2]" />
@@ -431,6 +674,7 @@ function FeedPanel({ open, loggedIn, mine, explore, saved, feedFocus, onUpdatePo
       {openPost ? (
         <PostDetail
           post={openPost}
+          text={text}
           onClose={() => setOpenPostId(null)}
           onUpdate={(patch) => onUpdatePost(openPost.id, patch)}
         />
@@ -445,7 +689,18 @@ function splitCaption(caption) {
   return { body, tags };
 }
 
-function MyFeed({ posts, onOpen, blankEmpty = false }) {
+function hashtagLabel(value) {
+  const label = String(value ?? '').trim().replace(/^#+/, '');
+  return label ? `#${label}` : '';
+}
+
+function postHasTag(post, label) {
+  const needle = hashtagLabel(label).toLowerCase();
+  if (!needle) return false;
+  return splitCaption(post.caption ?? '').tags.some((tag) => tag.toLowerCase() === needle);
+}
+
+function MyFeed({ text, posts, onOpen, blankEmpty = false }) {
   if (posts.length === 0) {
     if (blankEmpty) return <div className="flex-1" />;
     return (
@@ -476,7 +731,7 @@ function MyFeed({ posts, onOpen, blankEmpty = false }) {
   );
 }
 
-function PostDetail({ post, onClose, onUpdate }) {
+function PostDetail({ text, post, onClose, onUpdate }) {
   const [draft, setDraft] = useState('');
   const commentRef = useRef(null);
   const { body, tags } = splitCaption(post.caption ?? '');
@@ -504,7 +759,7 @@ function PostDetail({ post, onClose, onUpdate }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="게시물 상세"
+        aria-label={text.postDetail}
         className="relative grid h-[min(760px,90vh)] w-[min(760px,54vw)] grid-cols-[1.15fr_0.85fr] overflow-hidden rounded-[28px] bg-white text-black shadow-[0_24px_80px_rgba(20,16,50,0.28)]"
       >
         <div className="relative h-full min-h-0">
@@ -536,7 +791,7 @@ function PostDetail({ post, onClose, onUpdate }) {
               <button
                 type="button"
                 aria-pressed={Boolean(post.liked)}
-                aria-label="좋아요"
+                aria-label={text.like}
                 onClick={toggleLike}
                 className={`flex items-center gap-1.5 text-sm font-semibold ${post.liked ? 'text-rose-500' : 'text-black'}`}
               >
@@ -545,7 +800,7 @@ function PostDetail({ post, onClose, onUpdate }) {
               </button>
               <button
                 type="button"
-                aria-label="댓글"
+                aria-label={text.comment}
                 onClick={() => commentRef.current?.focus()}
                 className="flex items-center gap-1.5 text-sm font-semibold text-black"
               >
@@ -555,7 +810,7 @@ function PostDetail({ post, onClose, onUpdate }) {
               <button
                 type="button"
                 aria-pressed={Boolean(post.bookmarked)}
-                aria-label="저장"
+                aria-label={text.save}
                 onClick={() => onUpdate((current) => ({ bookmarked: !current.bookmarked }))}
                 className="ml-auto text-black"
               >
@@ -580,13 +835,13 @@ function PostDetail({ post, onClose, onUpdate }) {
               ref={commentRef}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder="댓글을 남겨보세요..."
-              aria-label="댓글을 남겨보세요..."
+              placeholder={text.commentPlaceholder}
+              aria-label={text.commentPlaceholder}
               className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#8d8aa3]"
             />
             <button
               type="submit"
-              aria-label="댓글 등록"
+              aria-label={text.commentSubmit}
               className="grid size-9 place-items-center rounded-full text-violet"
             >
               <SendIcon />
@@ -653,7 +908,7 @@ function SendIcon() {
   );
 }
 
-function CreatePostModal({ onClose, onShare }) {
+function CreatePostModal({ text, onClose, onShare }) {
   const inputRef = useRef(null);
   const ownedUrl = useRef(null);
   const [draftUrl, setDraftUrl] = useState(null);
@@ -845,7 +1100,7 @@ function BackIcon() {
   );
 }
 
-function ProfileMenu({ panelOpen, loggedIn, onLogin, onLogout }) {
+function ProfileMenu({ text, panelOpen, loggedIn, onLogin, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const rootRef = useRef(null);
 
@@ -932,6 +1187,107 @@ function ProfileIcon() {
         d="M5.5 19.2c1.4-2.8 3.6-4.2 6.5-4.2s5.1 1.4 6.5 4.2"
         stroke="currentColor"
         strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function LanguageToggle({ lang, label, onChange }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const current = languages.find((item) => item.id === lang);
+
+  useEffect(() => {
+    function closeOnOutside(event) {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    }
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('pointerdown', closeOnOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, []);
+
+  return (
+    <div className="relative origin-top-right scale-[1.3]" ref={rootRef}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={label}
+        onClick={() => setOpen((value) => !value)}
+        className="flex items-center gap-1.5 text-sm font-semibold text-black"
+      >
+        <GlobeIcon />
+        {current.label}
+        <ChevronIcon className={open ? 'rotate-180' : ''} />
+      </button>
+      {open ? (
+        <ul
+          role="listbox"
+          aria-label={label}
+          className="absolute top-full right-0 z-20 mt-2 w-36 overflow-hidden rounded-2xl border border-[#e6e6f2] bg-white py-1 shadow-[0_16px_40px_rgba(40,30,90,0.12)]"
+        >
+          {languages.map((option) => {
+            const selected = option.id === lang;
+            return (
+              <li key={option.id}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => {
+                    onChange(option.id);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-chip ${
+                    selected ? 'font-semibold text-ink' : 'text-muted'
+                  }`}
+                >
+                  {option.label}
+                  {selected ? <span className="size-1.5 rounded-full bg-violet" /> : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function GlobeIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M4 12h16M12 4c2.2 2.4 2.2 13.6 0 16M12 4c-2.2 2.4-2.2 13.6 0 16"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function ChevronIcon({ className = '' }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden="true"
+      className={`transition ${className}`}
+    >
+      <path
+        d="M2.5 4.5 6 8l3.5-3.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
         strokeLinecap="round"
       />
     </svg>
