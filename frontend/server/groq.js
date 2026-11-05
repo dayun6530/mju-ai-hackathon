@@ -1,18 +1,61 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { supabasePublishableKey, supabaseUrl } from '../src/supabasePublic.js'
 
 const VISION_MODEL = 'qwen/qwen3.8-27b'
 const SEARCH_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']
 
-function readKey(root) {
-  if (process.env.GROQ_API_KEY) return process.env.GROQ_API_KEY
+let remoteKey = ''
+let remoteLookup = null
+
+function envValue(root, name) {
+  const fromEnv = String(process.env[name] || '').trim()
+  if (fromEnv) return fromEnv
   const file = path.join(root, '.env')
   if (!fs.existsSync(file)) return ''
   for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const match = line.match(/^\s*GROQ_API_KEY\s*=\s*(.*)\s*$/)
-    if (match) return match[1].replace(/^["']|["']$/g, '')
+    const match = line.match(new RegExp(`^\\s*${name}\\s*=\\s*(.*)\\s*$`))
+    if (!match) continue
+    return match[1].replace(/^["']|["']$/g, '').trim()
   }
   return ''
+}
+
+function readRemoteKey(root) {
+  if (remoteKey) return Promise.resolve(remoteKey)
+  if (remoteLookup) return remoteLookup
+  const url = (envValue(root, 'VITE_SUPABASE_URL') || supabaseUrl).replace(/\/$/, '')
+  const publishable = envValue(root, 'VITE_SUPABASE_PUBLISHABLE_KEY') || supabasePublishableKey
+  if (!url || !publishable) return Promise.resolve('')
+  remoteLookup = fetch(`${url}/functions/v1/groq-key`, {
+    headers: {
+      apikey: publishable,
+      Authorization: `Bearer ${publishable}`,
+    },
+  })
+    .then(async (response) => {
+      const payload = await response.json().catch(() => ({}))
+      const key = response.ok ? String(payload.key || '').trim() : ''
+      if (key) remoteKey = key
+      return key
+    })
+    .catch(() => '')
+    .finally(() => {
+      remoteLookup = null
+    })
+  return remoteLookup
+}
+
+async function readKey(root) {
+  return envValue(root, 'GROQ_API_KEY') || readRemoteKey(root)
+}
+
+async function readBody(req) {
+  if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) return req.body
+  if (typeof req.body === 'string') return JSON.parse(req.body || '{}')
+  const chunks = []
+  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  return JSON.parse(Buffer.concat(chunks).toString() || '{}')
 }
 
 function isFood(value) {
@@ -976,20 +1019,14 @@ export function foodNotesFor(kind, hint, modelFood) {
   return finishFood(mergeFood(model, guide))
 }
 
-export function groqApi(root) {
-  return {
-    name: 'stos-groq',
-    configureServer(server) {
-      server.middlewares.use('/api/analyze', async (req, res) => {
+export async function handleAnalyze(req, res, root) {
         if (req.method !== 'POST') {
           res.statusCode = 405
           res.end()
           return
         }
         try {
-          const chunks = []
-          for await (const chunk of req) chunks.push(chunk)
-          const body = JSON.parse(Buffer.concat(chunks).toString() || '{}')
+          const body = await readBody(req)
           const kind = body.mode === 'restaurant' ? 'restaurant' : 'place'
           const text = String(body.text || '').slice(0, 1000)
           const image = typeof body.image === 'string' && body.image.startsWith('data:image/')
@@ -999,7 +1036,7 @@ export function groqApi(root) {
             send(res, 400, { error: 'empty' })
             return
           }
-          const key = readKey(root)
+          const key = await readKey(root)
           if (!key) {
             send(res, 503, { error: 'missing_key' })
             return
@@ -1108,6 +1145,14 @@ export function groqApi(root) {
             detail: error.message,
           })
         }
+}
+
+export function groqApi(root) {
+  return {
+    name: 'stos-groq',
+    configureServer(server) {
+      server.middlewares.use('/api/analyze', (req, res) => {
+        void handleAnalyze(req, res, root)
       })
     },
   }
