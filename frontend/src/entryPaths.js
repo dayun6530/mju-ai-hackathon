@@ -1,4 +1,4 @@
 export const entryPaths = {
-  scene: '/scene',
+  scene: '/places',
   food: '/food',
 };
