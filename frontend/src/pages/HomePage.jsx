@@ -180,6 +180,11 @@ export default function HomePage() {
         loggedIn={Boolean(user)}
         posts={posts}
         feedFocus={feedFocus}
+        onUpdatePost={(id, patch) => {
+          setPosts((current) =>
+            current.map((post) => (post.id === id ? { ...post, ...patch(post) } : post)),
+          );
+        }}
         onLogin={() => setLoginOpen(true)}
         onLogout={() => {
           logout();
@@ -191,7 +196,17 @@ export default function HomePage() {
         <CreatePostModal
           onClose={() => setComposerOpen(false)}
           onShare={(post) => {
-            setPosts((current) => [post, ...current]);
+            setPosts((current) => [
+              {
+                ...post,
+                author: user?.email?.split('@')[0] ?? '',
+                liked: false,
+                likeCount: 0,
+                comments: [],
+                bookmarked: false,
+              },
+              ...current,
+            ]);
             setComposerOpen(false);
             setFeedOpen(true);
             setFeedFocus((value) => value + 1);
@@ -216,9 +231,10 @@ export default function HomePage() {
   );
 }
 
-function FeedPanel({ open, loggedIn, posts, feedFocus, onLogin, onLogout, onToggle }) {
+function FeedPanel({ open, loggedIn, posts, feedFocus, onUpdatePost, onLogin, onLogout, onToggle }) {
   const [tab, setTab] = useState(0);
   const [searched, setSearched] = useState(false);
+  const [openPostId, setOpenPostId] = useState(null);
 
   useEffect(() => {
     if (!feedFocus) return;
@@ -232,6 +248,7 @@ function FeedPanel({ open, loggedIn, posts, feedFocus, onLogin, onLogout, onTogg
       : !loggedIn && (currentTab === '내 피드' || currentTab === '저장됨')
         ? currentTab
         : null;
+  const openPost = posts.find((post) => post.id === openPostId) ?? null;
 
   function chooseTab(index) {
     setTab(index);
@@ -325,7 +342,13 @@ function FeedPanel({ open, loggedIn, posts, feedFocus, onLogin, onLogout, onTogg
             </p>
           </div>
         ) : currentTab === '내 피드' ? (
-          <MyFeed posts={posts} />
+          <MyFeed posts={posts} onOpen={setOpenPostId} />
+        ) : currentTab === '저장됨' ? (
+          <MyFeed
+            posts={posts.filter((post) => post.bookmarked)}
+            onOpen={setOpenPostId}
+            blankEmpty
+          />
         ) : (
           <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
             {feedSlots.map((slot) => (
@@ -337,12 +360,26 @@ function FeedPanel({ open, loggedIn, posts, feedFocus, onLogin, onLogout, onTogg
           </div>
         )}
       </aside>
+      {openPost ? (
+        <PostDetail
+          post={openPost}
+          onClose={() => setOpenPostId(null)}
+          onUpdate={(patch) => onUpdatePost(openPost.id, patch)}
+        />
+      ) : null}
     </>
   );
 }
 
-function MyFeed({ posts }) {
+function splitCaption(caption) {
+  const tags = caption.match(/#[^\s#]+/g) ?? [];
+  const body = caption.replace(/#[^\s#]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return { body, tags };
+}
+
+function MyFeed({ posts, onOpen, blankEmpty = false }) {
   if (posts.length === 0) {
+    if (blankEmpty) return <div className="flex-1" />;
     return (
       <div className="flex flex-1 items-center justify-center px-6 text-center">
         <p className="text-sm leading-6 font-medium text-[#8d8aa3]">{text.emptyFeed}</p>
@@ -353,16 +390,198 @@ function MyFeed({ posts }) {
   return (
     <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
       {posts.map((post) => (
-        <figure key={post.id} className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#e7e9f2]">
+        <button
+          key={post.id}
+          type="button"
+          onClick={() => onOpen(post.id)}
+          className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#e7e9f2] text-left"
+        >
           <img src={post.url} alt="" className="size-full object-cover" />
           {post.caption ? (
-            <figcaption className="absolute inset-x-0 bottom-0 line-clamp-2 bg-black/45 px-2 py-1.5 text-[10px] leading-4 font-medium text-white">
+            <span className="absolute inset-x-0 bottom-0 line-clamp-2 bg-black/45 px-2 py-1.5 text-[10px] leading-4 font-medium text-white">
               {post.caption}
-            </figcaption>
+            </span>
           ) : null}
-        </figure>
+        </button>
       ))}
     </div>
+  );
+}
+
+function PostDetail({ post, onClose, onUpdate }) {
+  const [draft, setDraft] = useState('');
+  const commentRef = useRef(null);
+  const { body, tags } = splitCaption(post.caption ?? '');
+  const comments = post.comments ?? [];
+
+  function toggleLike() {
+    onUpdate((current) => ({
+      liked: !current.liked,
+      likeCount: current.likeCount + (current.liked ? -1 : 1),
+    }));
+  }
+
+  function addComment(event) {
+    event.preventDefault();
+    const message = draft.trim();
+    if (!message) return;
+    onUpdate((current) => ({
+      comments: [...(current.comments ?? []), { id: crypto.randomUUID(), text: message }],
+    }));
+    setDraft('');
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-end pr-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="게시물 상세"
+        className="relative grid h-[min(760px,90vh)] w-[min(760px,54vw)] grid-cols-[1.15fr_0.85fr] overflow-hidden rounded-[28px] bg-white text-black shadow-[0_24px_80px_rgba(20,16,50,0.28)]"
+      >
+        <div className="relative h-full min-h-0">
+          <img src={post.url} alt="" className="h-full w-full object-cover" />
+          <button
+            type="button"
+            aria-label={text.back}
+            onClick={onClose}
+            className="absolute top-4 left-4 z-20 grid size-10 place-items-center rounded-full bg-white text-black shadow-[0_6px_16px_rgba(20,16,50,0.25)]"
+          >
+            <BackIcon />
+          </button>
+        </div>
+        <div className="flex min-h-0 flex-col">
+          <div className="flex items-center gap-3 border-b border-[#ececf5] px-4 py-3">
+            <span className="grid size-9 place-items-center rounded-full bg-[#efeaff] text-violet">
+              <ProfileIcon />
+            </span>
+            <span className="truncate text-sm font-semibold">{post.author}</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+            {body ? <p className="text-sm leading-6 font-medium whitespace-pre-wrap">{body}</p> : null}
+            {tags.length > 0 ? (
+              <p className={`${body ? 'mt-3' : ''} text-sm leading-6 font-semibold text-violet`}>
+                {tags.join(' ')}
+              </p>
+            ) : null}
+            <div className="mt-4 flex items-center gap-4">
+              <button
+                type="button"
+                aria-pressed={Boolean(post.liked)}
+                aria-label="좋아요"
+                onClick={toggleLike}
+                className={`flex items-center gap-1.5 text-sm font-semibold ${post.liked ? 'text-rose-500' : 'text-black'}`}
+              >
+                <HeartIcon filled={Boolean(post.liked)} />
+                {post.likeCount ?? 0}
+              </button>
+              <button
+                type="button"
+                aria-label="댓글"
+                onClick={() => commentRef.current?.focus()}
+                className="flex items-center gap-1.5 text-sm font-semibold text-black"
+              >
+                <CommentIcon />
+                {comments.length}
+              </button>
+              <button
+                type="button"
+                aria-pressed={Boolean(post.bookmarked)}
+                aria-label="저장"
+                onClick={() => onUpdate((current) => ({ bookmarked: !current.bookmarked }))}
+                className="ml-auto text-black"
+              >
+                <BookmarkIcon filled={Boolean(post.bookmarked)} />
+              </button>
+            </div>
+            {comments.length > 0 ? (
+              <ul className="mt-4 space-y-2">
+                {comments.map((comment) => (
+                  <li key={comment.id} className="text-sm leading-5">
+                    <span className="font-semibold">{post.author}</span> {comment.text}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+          <form
+            className="flex items-center gap-2 border-t border-[#ececf5] px-4 py-3"
+            onSubmit={addComment}
+          >
+            <input
+              ref={commentRef}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="댓글을 남겨보세요..."
+              aria-label="댓글을 남겨보세요..."
+              className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#8d8aa3]"
+            />
+            <button
+              type="submit"
+              aria-label="댓글 등록"
+              className="grid size-9 place-items-center rounded-full text-violet"
+            >
+              <SendIcon />
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeartIcon({ filled }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 4.6-7 9-7 9Z"
+        fill={filled ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 17.5 4 20V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function BookmarkIcon({ filled }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M7 4.5h10a1 1 0 0 1 1 1V20l-6-3.2L6 20V5.5a1 1 0 0 1 1-1Z"
+        fill={filled ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5 12h14M13 6l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
