@@ -6,8 +6,8 @@ import NotFoundPage from '@/pages/NotFoundPage.jsx'
 export default function App() {
   return (
     <Routes>
+      <Route index element={<HomePage />} />
       <Route element={<RootLayout />}>
-        <Route index element={<HomePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

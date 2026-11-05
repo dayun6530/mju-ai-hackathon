@@ -12,6 +12,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    fs: {
+      allow: [fileURLToPath(new URL('..', import.meta.url))],
+    },
     // 백엔드 서버가 생기면 주석을 해제합니다.
     // proxy: {
     //   '/api': {
