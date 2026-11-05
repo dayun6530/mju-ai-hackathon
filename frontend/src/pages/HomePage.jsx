@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
 import logoUrl from '../../../logo/서울을 담은 STOS 로고.png';
-import { entryPaths } from '@/entryPaths.js';
+import StosApp from '@/stos/StosApp.jsx';
+import { fileToDataUrl } from '@/stos/image.js';
 
 const modes = [
   { id: 'scene', icon: ClapperIcon },
@@ -75,10 +75,10 @@ const copy = {
 };
 
 export default function HomePage() {
-  const navigate = useNavigate();
   const [lang, setLang] = useState('ko');
   const [entry, setEntry] = useState(null);
   const [photo, setPhoto] = useState(null);
+  const [session, setSession] = useState(null);
   const text = copy[lang];
 
   useEffect(() => {
@@ -95,17 +95,29 @@ export default function HomePage() {
     setEntry((current) => (current === id ? null : id));
   }
 
-  function onSearch(event) {
+  async function onSearch(event) {
     event.preventDefault();
-    if (!entry) return;
     const query = String(new FormData(event.currentTarget).get('query') ?? '').trim();
-    navigate(entryPaths[entry], {
-      state: {
-        entry,
-        query,
-        photo: photo?.file ?? null,
-      },
+    let image = '';
+    if (photo?.file) {
+      try {
+        image = await fileToDataUrl(photo.file);
+      } catch {
+        image = '';
+      }
+    }
+    if (!query && !image) return;
+    setSession({
+      id: crypto.randomUUID(),
+      text: query,
+      mode: entry === 'food' ? 'restaurant' : 'place',
+      image,
+      lang,
     });
+  }
+
+  if (session) {
+    return <StosApp session={session} onHome={() => setSession(null)} />;
   }
 
   return (
