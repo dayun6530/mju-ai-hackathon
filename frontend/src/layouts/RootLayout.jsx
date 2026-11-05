@@ -3,7 +3,7 @@ import SiteHeader from '@/components/SiteHeader.jsx'
 
 export default function RootLayout() {
   return (
-    <div className="min-h-svh bg-slate-50 text-slate-900">
+    <div className="min-h-svh bg-[#eef1fb] text-slate-900">
       <SiteHeader />
       <main className="mx-auto max-w-5xl px-6 py-12">
         <Outlet />

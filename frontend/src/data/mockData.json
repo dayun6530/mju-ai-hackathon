@@ -1,0 +1,127 @@
+[
+  {
+    "query": "드라마에서 친구들이 대학가에서 떡볶이 먹던 분위기",
+    "category": "VIBE",
+    "keywords": ["대학가", "떡볶이", "친구", "활기찬 분위기"],
+    "places": [
+      {
+        "id": 1,
+        "name": "신촌 연세로",
+        "type": "SIMILAR_EXPERIENCE",
+        "description": "청춘 드라마 속 활기찬 대학가 감성을 느낄 수 있는 대표 거리",
+        "latitude": 37.5596,
+        "longitude": 126.9368,
+        "source": "서울시 관광정보"
+      },
+      {
+        "id": 2,
+        "name": "혜화동 대학로 소나무길",
+        "type": "SIMILAR_EXPERIENCE",
+        "description": "오래된 분식집과 연극 극장이 모여 있어 레트로한 친구들과의 추억을 떠올리게 하는 거리",
+        "latitude": 37.5828,
+        "longitude": 127.0019,
+        "source": "한국관광공사"
+      }
+    ]
+  },
+  {
+    "query": "주인공이 퇴근 후 한강을 바라보며 맥주 한 캔 마시던 야경 명소",
+    "category": "SCENE",
+    "keywords": ["한강", "야경", "퇴근길", "위로", "맥주"],
+    "places": [
+      {
+        "id": 3,
+        "name": "반포 한강공원 달빛광장",
+        "type": "FILMING_LOCATION",
+        "description": "화려한 반포대교 달빛무지개분수와 서울 야경을 바라보며 쉬어가기 좋은 K-드라마 단골 촬영지",
+        "latitude": 37.5114,
+        "longitude": 126.9965,
+        "source": "서울관광재단 (Visit Seoul)"
+      },
+      {
+        "id": 4,
+        "name": "노들섬 잔디마당",
+        "type": "SIMILAR_EXPERIENCE",
+        "description": "한강철교와 도심 스카이라인을 배경으로 조용히 노을과 야경을 즐길 수 있는 복합문화공간",
+        "latitude": 37.5172,
+        "longitude": 126.9582,
+        "source": "서울시 관광정보"
+      }
+    ]
+  },
+  {
+    "query": "사극 드라마 속 고즈넉한 한옥 돌담길 데이트 분위기",
+    "category": "VIBE",
+    "keywords": ["한옥", "돌담길", "고궁", "산책", "로맨스"],
+    "places": [
+      {
+        "id": 5,
+        "name": "덕수궁 돌담길",
+        "type": "SIMILAR_EXPERIENCE",
+        "description": "계절마다 운치 있는 가로수와 전통 돌담이 어우러져 로맨틱한 분위기를 풍기는 명소",
+        "latitude": 37.5658,
+        "longitude": 126.9752,
+        "source": "한국관광공사"
+      },
+      {
+        "id": 6,
+        "name": "북촌한옥마을 가회동 골목길",
+        "type": "SIMILAR_EXPERIENCE",
+        "description": "조선시대 전통 한옥 처마 사이로 서울 시내 전경이 내려다보이는 전통 명소",
+        "latitude": 37.5826,
+        "longitude": 126.9835,
+        "source": "종로구청 문화관광"
+      }
+    ]
+  },
+  {
+    "query": "시장 통로에서 지글지글 전 부치고 시끌벅적하게 먹는 K-푸드 골목",
+    "category": "FOOD",
+    "keywords": ["전통시장", "광장시장", "빈대떡", "마약김밥", "야식"],
+    "places": [
+      {
+        "id": 7,
+        "name": "광장시장 먹거리골목",
+        "type": "FILMING_LOCATION",
+        "description": "넷플릭스 및 각종 예능에 자주 등장하는 서울 대표 전통시장 먹자골목",
+        "latitude": 37.5701,
+        "longitude": 126.9998,
+        "source": "서울관광재단 (Visit Seoul)"
+      },
+      {
+        "id": 8,
+        "name": "통인시장 엽전도시락 골목",
+        "type": "SIMILAR_EXPERIENCE",
+        "description": "엽전으로 기름떡볶이와 전통 분식을 직접 골라 담아 먹는 독특한 레트로 식문화 체험 공간",
+        "latitude": 37.5808,
+        "longitude": 126.9711,
+        "source": "종로구청 문화관광"
+      }
+    ]
+  },
+  {
+    "query": "트렌디한 주인공이 찾을 법한 붉은 벽돌 감성 카페와 쇼룸 거리",
+    "category": "VIBE",
+    "keywords": ["성수동", "붉은벽돌", "힙플레이스", "카페거리", "팝업"],
+    "places": [
+      {
+        "id": 9,
+        "name": "성수동 연무장길",
+        "type": "SIMILAR_EXPERIENCE",
+        "description": "과거 공장 지대와 현대적인 플래그십 스토어 및 감성 카페가 공존하는 K-트렌드의 중심지",
+        "latitude": 37.5445,
+        "longitude": 127.056,
+        "source": "성동문화재단"
+      },
+      {
+        "id": 10,
+        "name": "서울숲 아틀리에길",
+        "type": "SIMILAR_EXPERIENCE",
+        "description": "서울숲 공원 인근에 위치한 주택 개조형 디저트 숍과 아기자기한 공방이 모여 있는 산책 거리",
+        "latitude": 37.5471,
+        "longitude": 127.0428,
+        "source": "서울시 관광정보"
+      }
+    ]
+  }
+]
