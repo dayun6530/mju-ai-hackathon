@@ -178,11 +178,18 @@ img { max-width: 100%; display: block; }
 .remove-photo { justify-self: start; border: 0; background: transparent; color: var(--purple); font-weight: 700; }
 .composer { border-radius: 26px; padding: 8px 8px 8px 18px; }
 .composer > input { padding: 0 8px; }
-.food-notes h2 { font-size: 22px; margin: 16px 0 4px; }
-.food-notes h2 span, .read-as { color: var(--purple); font-weight: 650; }
+.food-notes {
+  background: #f6f3ff; border-radius: 18px; padding: 14px 14px 8px;
+}
+.detail .food-notes { background: white; padding: 0; }
+.food-kicker { margin: 0; color: var(--purple); font-size: 13px; font-weight: 750; }
+.food-notes h2 { font-size: 22px; margin: 4px 0; }
+.read-as, .order-read { color: var(--purple); font-weight: 700; }
 .food-notes h3 { margin: 12px 0 4px; font-size: 14px; }
 .food-notes p, .food-notes li { color: #3d3868; line-height: 1.45; }
 .food-notes ul { margin: 0; padding-left: 18px; }
+.order-ko { margin: 0; font-size: 16px; }
+.order-mean { margin: 4px 0 0; color: #6d678c; }
 .similar { color: var(--muted); font-size: 13px; }
 .source-link a, .tip a { color: var(--purple); }
 .result-card { max-height: 680px; overflow: auto; }
@@ -220,6 +227,13 @@ img { max-width: 100%; display: block; }
   display: flex; gap: 12px; align-items: flex-start;
 }
 .pick-photo { width: 112px; height: 112px; object-fit: cover; border-radius: 14px; flex: none; }
+.photo-missing {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  box-sizing: border-box; padding: 8px; text-align: center;
+  background: #ece7f6; color: #6a648c;
+}
+.photo-missing svg { width: 28px; height: 28px; flex: none; }
+.photo-missing > span { font-size: 11px; line-height: 1.3; font-weight: 650; white-space: pre-line; }
 .pick-copy { min-width: 0; }
 .pick.on { border-color: var(--purple); background: white; }
 .pick-top { display: flex; align-items: center; gap: 8px; }
@@ -245,8 +259,9 @@ img { max-width: 100%; display: block; }
 .area { color: var(--muted); margin-top: 0; }
 .thumb { height: 150px; width: 100%; object-fit: cover; border-radius: 16px; }
 .order {
-  background: #f6f3ff; border-radius: 12px; padding: 10px 12px; font-weight: 700;
+  background: #f6f3ff; border-radius: 16px; padding: 12px 14px; margin-top: 12px;
 }
+.order h3 { margin-top: 0; }
 .more h2, .tip h2 { font-size: 16px; margin: 0 0 4px; }
 .more p, .tip p { margin: 0; color: var(--muted); }
 .actions, .detail-actions { display: flex; gap: 10px; margin-top: 16px; }
