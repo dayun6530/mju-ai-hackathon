@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
 import logoUrl from '../../../logo/서울을 담은 STOS 로고.png';
-import { entryPaths } from '@/entryPaths.js';
+import StosApp from '@/stos/StosApp.jsx';
+import { fileToDataUrl } from '@/stos/image.js';
+import LoginModal from '@/components/LoginModal.jsx';
+import { getUser, logout } from '@/auth.js';
 
 const modes = [
   { id: 'scene', icon: ClapperIcon },
@@ -45,17 +47,29 @@ export default function HomePage() {
     setEntry((current) => (current === id ? null : id));
   }
 
-  function onSearch(event) {
+  async function onSearch(event) {
     event.preventDefault();
-    if (!entry) return;
     const query = String(new FormData(event.currentTarget).get('query') ?? '').trim();
-    navigate(entryPaths[entry], {
-      state: {
-        entry,
-        query,
-        photo: photo?.file ?? null,
-      },
+    let image = '';
+    if (photo?.file) {
+      try {
+        image = await fileToDataUrl(photo.file);
+      } catch {
+        image = '';
+      }
+    }
+    if (!query && !image) return;
+    setSession({
+      id: crypto.randomUUID(),
+      text: query,
+      mode: entry === 'food' ? 'restaurant' : 'place',
+      image,
+      lang,
     });
+  }
+
+  if (session) {
+    return <StosApp session={session} onHome={() => setSession(null)} />;
   }
 
   return (
@@ -117,6 +131,14 @@ export default function HomePage() {
         open={feedOpen}
         onToggle={() => setFeedOpen((open) => !open)}
       />
+      {loginOpen ? (
+        <LoginModal
+          text={text}
+          logoUrl={logoUrl}
+          onClose={() => setLoginOpen(false)}
+          onSuccess={setUser}
+        />
+      ) : null}
 
       <p className="script pointer-events-none absolute right-12 bottom-12 z-10 text-right text-white">
         Discover Seoul
