@@ -11,7 +11,6 @@ export default function App() {
       <Route index element={<HomePage />} />
       <Route element={<RootLayout />}>
         <Route path="places" element={<PlacesPage />} />
-        <Route path="scene" element={<EntryPlaceholder entry="scene" />} />
         <Route path="food" element={<EntryPlaceholder entry="food" />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
