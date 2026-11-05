@@ -1,21 +1,8 @@
 import { supabase } from '@/supabase.js'
+import { supabasePublishableKey, supabaseUrl } from '@/supabasePublic.js'
 
-const ACCOUNTS_KEY = 'stos-accounts'
 const USER_KEY = 'stos-user'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function readAccounts() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function writeAccounts(accounts) {
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
-}
 
 function remember(user) {
   const stored = {
@@ -24,22 +11,6 @@ function remember(user) {
   }
   localStorage.setItem(USER_KEY, JSON.stringify(stored))
   return stored
-}
-
-async function hashPassword(password, salt) {
-  const encoded = new TextEncoder()
-  const key = await crypto.subtle.importKey('raw', encoded.encode(password), 'PBKDF2', false, ['deriveBits'])
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt: encoded.encode(salt),
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    key,
-    256,
-  )
-  return [...new Uint8Array(bits)].map((value) => value.toString(16).padStart(2, '0')).join('')
 }
 
 export function getUser() {
@@ -93,22 +64,39 @@ export async function login({ email, password }) {
   return { ok: true, user: remember(data.user || { email: normalized }) }
 }
 
-export function findAccount(email) {
+async function recovery(body) {
+  if (!supabase) return { error: 'config' }
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/reset-password`, {
+      method: 'POST',
+      headers: {
+        apikey: supabasePublishableKey,
+        Authorization: `Bearer ${supabasePublishableKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+    return await response.json()
+  } catch {
+    return { error: 'invalid' }
+  }
+}
+
+export async function findAccount(email) {
   const normalized = email.trim().toLowerCase()
   if (!EMAIL_PATTERN.test(normalized)) return { ok: false, error: 'email' }
-  const account = readAccounts().find((item) => item.email === normalized)
-  if (!account) return { ok: false, error: 'missing' }
+  const result = await recovery({ email: normalized })
+  if (result.error === 'missing') return { ok: false, error: 'missing' }
+  if (result.error) return { ok: false, error: result.error === 'config' ? 'config' : 'invalid' }
   return { ok: true, email: normalized }
 }
 
 export async function resetPassword({ email, password }) {
   const normalized = email.trim().toLowerCase()
   if (password.length < 8) return { ok: false, error: 'short' }
-  const accounts = readAccounts()
-  const account = accounts.find((item) => item.email === normalized)
-  if (!account) return { ok: false, error: 'missing' }
-  account.salt = crypto.randomUUID()
-  account.passwordHash = await hashPassword(password, account.salt)
-  writeAccounts(accounts)
+  const result = await recovery({ email: normalized, password })
+  if (result.error === 'missing') return { ok: false, error: 'missing' }
+  if (result.error === 'short') return { ok: false, error: 'short' }
+  if (result.error || result.ok !== true) return { ok: false, error: 'invalid' }
   return { ok: true }
 }
