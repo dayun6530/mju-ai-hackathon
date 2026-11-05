@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 
 const modes = [
   { id: 'scene', icon: ClapperIcon },
-  { id: 'mood', icon: SmileIcon },
   { id: 'food', icon: FoodIcon },
 ];
 
@@ -14,29 +13,28 @@ const languages = [
 const copy = {
   ko: {
     headline: ['K-콘텐츠에서', '실제 경험으로'],
-    sub: '좋아하는 K-콘텐츠 속 장면, 맛, 분위기를 서울에서 찾아보세요.',
+    sub: '좋아하는 K-콘텐츠 속 장면과 맛을 서울에서 찾아보세요.',
     placeholder: '예: "이 드라마 촬영지가 어디야?"',
+    attachPhoto: '사진 첨부',
+    photoRemove: '첨부 삭제',
     searchLabel: '장면, 분위기, 음식을 입력',
     searchButton: '검색',
     modes: {
-      scene: { title: '장면 찾기', line: '"어디서 찍은 장면일까?"' },
-      mood: {
-        title: '분위기 느끼기',
-        line: '"드라마 같은 분위기를 느끼고 싶어"',
-      },
+      scene: { title: '장소 찾기', line: '"어디서 찍은 장소일까?"' },
       food: { title: '음식 알아보기', line: '"이 음식이 뭐야?"' },
     },
     languageLabel: '언어: 한국어',
   },
   en: {
     headline: ['From K-Content', 'to Real Experience'],
-    sub: 'Discover the scenes, flavors, and vibes from your favorite K-content in Seoul.',
+    sub: 'Discover the scenes and flavors from your favorite K-content in Seoul.',
     placeholder: 'Try "the filming location of this drama"',
+    attachPhoto: 'Add a photo',
+    photoRemove: 'Remove photo',
     searchLabel: 'Describe a scene, vibe, or food',
     searchButton: 'Search',
     modes: {
       scene: { title: 'Find a Scene', line: '"Where was this filmed?"' },
-      mood: { title: 'Feel the Vibe', line: '"Experience a drama-like vibe"' },
       food: { title: 'Explore Food', line: '"What\'s this food?"' },
     },
     languageLabel: 'Language: English',
@@ -69,7 +67,7 @@ export default function App() {
         </header>
 
         <section className="flex w-[min(720px,62%)] flex-1 flex-col py-4">
-          <div className="flex flex-1 flex-col justify-center">
+          <div className="flex flex-1 flex-col justify-start pt-5">
             <h1 className="text-[4rem] font-extrabold leading-[1.08] tracking-[-0.035em] text-black">
               <span className="relative inline-block">
                 {text.headline[0]}
@@ -78,30 +76,18 @@ export default function App() {
               <br />
               {text.headline[1]}
             </h1>
-            <p className="mt-4 max-w-md text-[15px] leading-7 font-medium text-black">
+            <p className="mt-10 max-w-md text-[18px] leading-7 font-medium text-black">
               {text.sub}
             </p>
 
             <form
-              className="mt-7 flex h-14 items-center gap-2 rounded-full border border-[#e7e7f2] bg-white py-1.5 pr-1.5 pl-4 shadow-[0_10px_30px_rgba(55,45,120,0.06)]"
+              className="mt-10 flex h-14 items-center gap-2 rounded-full border border-[#e7e7f2] bg-white py-1.5 pr-1.5 pl-1.5 shadow-[0_10px_30px_rgba(55,45,120,0.06)]"
               onSubmit={(event) => event.preventDefault()}
             >
-              <SearchIcon />
-              <input
-                className="h-full min-w-0 flex-1 bg-transparent text-sm text-black outline-none placeholder:text-[#3a3a3a]"
-                placeholder={text.placeholder}
-                aria-label={text.searchLabel}
-              />
-              <button
-                type="button"
-                aria-label={text.searchButton}
-                className="grid size-10 shrink-0 place-items-center rounded-full bg-violet text-white"
-              >
-                <ArrowIcon />
-              </button>
+              <SearchField text={text} />
             </form>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-10 flex flex-wrap gap-2">
               {modes.map((mode) => (
                 <ModeChip
                   key={mode.id}
@@ -144,7 +130,10 @@ function LanguageToggle({ lang, label, onChange }) {
   }, []);
 
   return (
-    <div className="relative ml-auto" ref={rootRef}>
+    <div
+      className="relative ml-auto origin-top-right scale-[1.3]"
+      ref={rootRef}
+    >
       <button
         type="button"
         aria-haspopup="listbox"
@@ -191,6 +180,99 @@ function LanguageToggle({ lang, label, onChange }) {
   );
 }
 
+function SearchField({ text }) {
+  const inputRef = useRef(null);
+  const [photo, setPhoto] = useState(null);
+
+  useEffect(() => {
+    return () => {
+      if (photo) URL.revokeObjectURL(photo);
+    };
+  }, [photo]);
+
+  function onFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPhoto((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return url;
+    });
+  }
+
+  function clearPhoto() {
+    setPhoto((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
+    if (inputRef.current) inputRef.current.value = '';
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={onFile}
+      />
+      <button
+        type="button"
+        aria-label={text.attachPhoto}
+        onClick={() => inputRef.current?.click()}
+        className="grid size-10 shrink-0 place-items-center rounded-full text-black"
+      >
+        <PlusIcon />
+      </button>
+      {photo ? (
+        <span className="relative shrink-0">
+          <img src={photo} alt="" className="size-8 rounded-lg object-cover" />
+          <button
+            type="button"
+            aria-label={text.photoRemove}
+            onClick={clearPhoto}
+            className="absolute -top-1 -right-1 grid size-4 place-items-center rounded-full bg-black text-[10px] leading-none text-white"
+          >
+            ×
+          </button>
+        </span>
+      ) : null}
+      <input
+        className="h-full min-w-0 flex-1 bg-transparent text-sm text-black outline-none placeholder:text-[#3a3a3a]"
+        placeholder={text.placeholder}
+        aria-label={text.searchLabel}
+      />
+      <button
+        type="button"
+        aria-label={text.searchButton}
+        className="grid size-10 shrink-0 place-items-center rounded-full bg-violet text-white"
+      >
+        <ArrowIcon />
+      </button>
+    </>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 5v14M5 12h14"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function ModeChip({ mode, text }) {
   const Icon = mode.icon;
 
@@ -198,16 +280,16 @@ function ModeChip({ mode, text }) {
     <button
       type="button"
       data-entry={mode.id}
-      className="flex items-center gap-2.5 rounded-full bg-chip py-1.5 pr-4 pl-1.5 text-left"
+      className="flex items-center gap-3 rounded-full bg-chip py-2.5 pr-5 pl-2 text-left"
     >
-      <span className="grid size-9 place-items-center rounded-full bg-white text-ink shadow-[0_2px_8px_rgba(40,30,90,0.06)]">
+      <span className="grid size-11 place-items-center rounded-full bg-white text-ink shadow-[0_2px_8px_rgba(40,30,90,0.06)] [&_svg]:size-6">
         <Icon />
       </span>
       <span>
-        <span className="block text-[13px] leading-4 font-semibold text-black">
+        <span className="block text-[14px] leading-5 font-semibold text-black">
           {text.title}
         </span>
-        <span className="mt-0.5 block text-[11px] leading-4 font-medium text-black">
+        <span className="mt-0.5 block text-[10px] leading-4 font-medium text-black">
           {text.line}
         </span>
       </span>
@@ -224,27 +306,6 @@ function SparkleIcon() {
       aria-hidden="true"
     >
       <path d="M10 0l1.6 6.2L18 8l-6.4 1.8L10 16l-1.6-6.2L2 8l6.4-1.8L10 0Z" />
-    </svg>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className="text-black"
-    >
-      <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M16 16.5 20 20.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
     </svg>
   );
 }
@@ -327,32 +388,6 @@ function ClapperIcon() {
         stroke="currentColor"
         strokeWidth="1.6"
         strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function SmileIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M8.5 13.5c.8 1.4 2 2.1 3.5 2.1s2.7-.7 3.5-2.1"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M9 10h.01M15 10h.01"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
       />
     </svg>
   );
