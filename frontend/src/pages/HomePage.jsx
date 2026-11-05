@@ -30,6 +30,15 @@ const text = {
   login: '로그인',
   logout: '로그아웃',
   createFeed: '피드 생성',
+  newPost: '새 게시물 만들기',
+  dropPhoto: '사진과 동영상을 여기에 끌어다 놓으세요',
+  chooseFile: '컴퓨터에서 선택',
+  preview: '미리보기',
+  next: '다음',
+  share: '공유하기',
+  caption: '캡션 추가...',
+  back: '이전',
+  emptyFeed: '아직 게시물이 없어요.',
   email: '이메일',
   password: '비밀번호',
   signup: '회원가입',
@@ -61,6 +70,9 @@ export default function HomePage() {
   const [session, setSession] = useState(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [user, setUser] = useState(() => getUser());
+  const [posts, setPosts] = useState([]);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [feedFocus, setFeedFocus] = useState(0);
   const lang = 'ko';
 
   useEffect(() => {
@@ -135,6 +147,13 @@ export default function HomePage() {
               />
               <button
                 type="button"
+                onClick={() => {
+                  if (!user) {
+                    setLoginOpen(true);
+                    return;
+                  }
+                  setComposerOpen(true);
+                }}
                 className="flex items-center gap-3 rounded-full bg-chip py-2.5 pr-5 pl-2 text-left"
               >
                 <span className="grid size-11 place-items-center rounded-full bg-white text-ink shadow-[0_2px_8px_rgba(40,30,90,0.06)]">
@@ -159,6 +178,8 @@ export default function HomePage() {
       <FeedPanel
         open={feedOpen}
         loggedIn={Boolean(user)}
+        posts={posts}
+        feedFocus={feedFocus}
         onLogin={() => setLoginOpen(true)}
         onLogout={() => {
           logout();
@@ -166,6 +187,17 @@ export default function HomePage() {
         }}
         onToggle={() => setFeedOpen((open) => !open)}
       />
+      {composerOpen ? (
+        <CreatePostModal
+          onClose={() => setComposerOpen(false)}
+          onShare={(post) => {
+            setPosts((current) => [post, ...current]);
+            setComposerOpen(false);
+            setFeedOpen(true);
+            setFeedFocus((value) => value + 1);
+          }}
+        />
+      ) : null}
       {loginOpen ? (
         <LoginModal
           text={text}
@@ -184,9 +216,15 @@ export default function HomePage() {
   );
 }
 
-function FeedPanel({ open, loggedIn, onLogin, onLogout, onToggle }) {
+function FeedPanel({ open, loggedIn, posts, feedFocus, onLogin, onLogout, onToggle }) {
   const [tab, setTab] = useState(0);
   const [searched, setSearched] = useState(false);
+
+  useEffect(() => {
+    if (!feedFocus) return;
+    setTab(0);
+    setSearched(false);
+  }, [feedFocus]);
   const currentTab = text.feedTabs[tab];
   const loginGate =
     !loggedIn && searched
@@ -286,6 +324,8 @@ function FeedPanel({ open, loggedIn, onLogin, onLogout, onToggle }) {
               {`"${loginGate}" 기능은 로그인 후 이용하실 수 있습니다.`}
             </p>
           </div>
+        ) : currentTab === '내 피드' ? (
+          <MyFeed posts={posts} />
         ) : (
           <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
             {feedSlots.map((slot) => (
@@ -298,6 +338,225 @@ function FeedPanel({ open, loggedIn, onLogin, onLogout, onToggle }) {
         )}
       </aside>
     </>
+  );
+}
+
+function MyFeed({ posts }) {
+  if (posts.length === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-6 text-center">
+        <p className="text-sm leading-6 font-medium text-[#8d8aa3]">{text.emptyFeed}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
+      {posts.map((post) => (
+        <figure key={post.id} className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#e7e9f2]">
+          <img src={post.url} alt="" className="size-full object-cover" />
+          {post.caption ? (
+            <figcaption className="absolute inset-x-0 bottom-0 line-clamp-2 bg-black/45 px-2 py-1.5 text-[10px] leading-4 font-medium text-white">
+              {post.caption}
+            </figcaption>
+          ) : null}
+        </figure>
+      ))}
+    </div>
+  );
+}
+
+function CreatePostModal({ onClose, onShare }) {
+  const inputRef = useRef(null);
+  const ownedUrl = useRef(null);
+  const [draftUrl, setDraftUrl] = useState(null);
+  const [step, setStep] = useState('pick');
+  const [caption, setCaption] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (ownedUrl.current) URL.revokeObjectURL(ownedUrl.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [onClose]);
+
+  function takeFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    if (ownedUrl.current) URL.revokeObjectURL(ownedUrl.current);
+    const url = URL.createObjectURL(file);
+    ownedUrl.current = url;
+    setDraftUrl(url);
+    setStep('preview');
+  }
+
+  function share() {
+    if (!draftUrl) return;
+    ownedUrl.current = null;
+    onShare({
+      id: crypto.randomUUID(),
+      url: draftUrl,
+      caption: caption.trim(),
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={text.newPost}
+        className={`flex max-h-[86vh] flex-col overflow-hidden rounded-2xl bg-white text-black shadow-[0_24px_80px_rgba(20,16,50,0.28)] ${
+          step === 'caption' ? 'w-[min(920px,94vw)]' : 'w-[min(440px,94vw)]'
+        }`}
+      >
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#ececf5] px-4">
+          {step === 'pick' ? (
+            <span className="w-14" />
+          ) : (
+            <button
+              type="button"
+              aria-label={text.back}
+              onClick={() => setStep(step === 'caption' ? 'preview' : 'pick')}
+              className="grid size-9 place-items-center rounded-full text-black"
+            >
+              <BackIcon />
+            </button>
+          )}
+          <h2 className="text-sm font-semibold">
+            {step === 'preview' ? text.preview : text.newPost}
+          </h2>
+          {step === 'pick' ? (
+            <button
+              type="button"
+              aria-label={text.close}
+              onClick={onClose}
+              className="grid size-9 place-items-center rounded-full text-xl leading-none text-black"
+            >
+              ×
+            </button>
+          ) : step === 'preview' ? (
+            <button
+              type="button"
+              onClick={() => setStep('caption')}
+              className="text-sm font-semibold text-violet"
+            >
+              {text.next}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={share}
+              className="text-sm font-semibold text-violet"
+            >
+              {text.share}
+            </button>
+          )}
+        </header>
+
+        {step === 'pick' ? (
+          <div
+            className={`grid min-h-80 place-items-center px-8 py-12 text-center ${
+              dragOver ? 'bg-[#f4f0ff]' : ''
+            }`}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragOver(false);
+              takeFile(event.dataTransfer.files?.[0]);
+            }}
+          >
+            <div>
+              <MediaIcon />
+              <p className="mt-4 text-lg font-medium">{text.dropPhoto}</p>
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="mt-5 rounded-lg bg-violet px-4 py-2 text-sm font-semibold text-white"
+              >
+                {text.chooseFile}
+              </button>
+              <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(event) => {
+                  takeFile(event.target.files?.[0]);
+                  event.target.value = '';
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {step === 'preview' && draftUrl ? (
+          <img src={draftUrl} alt="" className="aspect-square w-full object-cover" />
+        ) : null}
+
+        {step === 'caption' && draftUrl ? (
+          <div className="grid min-h-0 flex-1 grid-cols-2">
+            <img
+              src={draftUrl}
+              alt=""
+              className="h-full max-h-[70vh] w-full object-cover"
+            />
+            <label className="flex min-h-80 flex-col p-4">
+              <textarea
+                value={caption}
+                onChange={(event) => setCaption(event.target.value)}
+                placeholder={text.caption}
+                aria-label={text.caption}
+                maxLength={200}
+                className="min-h-40 flex-1 resize-none bg-transparent text-sm leading-6 outline-none placeholder:text-[#8d8aa3]"
+              />
+            </label>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function MediaIcon() {
+  return (
+    <svg
+      className="mx-auto size-16 text-black"
+      viewBox="0 0 64 64"
+      fill="none"
+      aria-hidden="true"
+    >
+      <rect x="6" y="14" width="34" height="28" rx="4" stroke="currentColor" strokeWidth="2.4" />
+      <path d="M14 34l7-7 6 6 4-4 7 8" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+      <circle cx="16" cy="22" r="2" fill="currentColor" />
+      <rect x="28" y="24" width="30" height="24" rx="4" stroke="currentColor" strokeWidth="2.4" />
+      <path d="M40 36v8M36 40h8" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M15 6 9 12l6 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
