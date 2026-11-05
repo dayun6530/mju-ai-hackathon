@@ -1,18 +1,49 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { supabasePublishableKey, supabaseUrl } from '../src/supabasePublic.js'
 
 const VISION_MODEL = 'qwen/qwen3.8-27b'
 const SEARCH_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']
 
-function readKey(root) {
-  if (process.env.GROQ_API_KEY) return process.env.GROQ_API_KEY
+let remoteKey = ''
+let remoteLookup = null
+
+function localKey(root) {
+  const fromEnv = String(process.env.GROQ_API_KEY || '').trim()
+  if (fromEnv) return fromEnv
   const file = path.join(root, '.env')
   if (!fs.existsSync(file)) return ''
   for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
     const match = line.match(/^\s*GROQ_API_KEY\s*=\s*(.*)\s*$/)
-    if (match) return match[1].replace(/^["']|["']$/g, '')
+    if (!match) continue
+    return match[1].replace(/^["']|["']$/g, '').trim()
   }
   return ''
+}
+
+function readRemoteKey() {
+  if (remoteKey) return Promise.resolve(remoteKey)
+  if (remoteLookup) return remoteLookup
+  remoteLookup = fetch(`${supabaseUrl}/functions/v1/groq-key`, {
+    headers: {
+      apikey: supabasePublishableKey,
+      Authorization: `Bearer ${supabasePublishableKey}`,
+    },
+  })
+    .then(async (response) => {
+      const payload = await response.json().catch(() => ({}))
+      remoteKey = response.ok ? String(payload.key || '').trim() : ''
+      return remoteKey
+    })
+    .catch(() => '')
+    .finally(() => {
+      remoteLookup = null
+    })
+  return remoteLookup
+}
+
+async function readKey(root) {
+  return localKey(root) || readRemoteKey()
 }
 
 function isFood(value) {
@@ -999,7 +1030,7 @@ export function groqApi(root) {
             send(res, 400, { error: 'empty' })
             return
           }
-          const key = readKey(root)
+          const key = await readKey(root)
           if (!key) {
             send(res, 503, { error: 'missing_key' })
             return

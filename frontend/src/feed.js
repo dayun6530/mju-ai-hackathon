@@ -6,9 +6,20 @@ const IMAGE_TYPES = {
   'image/webp': 'webp',
 }
 
-function cardFrom(post, url, saved, author) {
-  const profile = post.profiles
+function cardFrom(post, url, saved, author, userId = '') {
+  const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles
   const name = author || profile?.display_name || profile?.username || ''
+  const likes = post.post_likes || []
+  const comments = [...(post.comments || [])]
+    .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
+    .map((comment) => {
+      const commenter = Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles
+      return {
+        id: comment.id,
+        text: comment.content,
+        author: commenter?.display_name || commenter?.username || '',
+      }
+    })
   return {
     id: post.id,
     userId: post.user_id,
@@ -17,9 +28,9 @@ function cardFrom(post, url, saved, author) {
     saved,
     bookmarked: saved,
     author: name,
-    liked: false,
-    likeCount: 0,
-    comments: [],
+    liked: Boolean(userId) && likes.some((like) => like.user_id === userId),
+    likeCount: likes.length,
+    comments,
   }
 }
 
@@ -65,7 +76,7 @@ async function prepareImage(file) {
 export async function loadFeed(userId) {
   const postsQuery = supabase
     .from('posts')
-    .select('id, user_id, caption, created_at, profiles!posts_user_id_fkey(username, display_name), post_media(storage_path, sort_order)')
+    .select('id, user_id, caption, created_at, profiles!posts_user_id_fkey(username, display_name), post_media(storage_path, sort_order), post_likes(user_id), comments(id, content, created_at, profiles!comments_user_id_fkey(username, display_name))')
     .eq('status', 'published')
     .order('created_at', { ascending: false })
   const savesQuery = userId
@@ -79,14 +90,37 @@ export async function loadFeed(userId) {
   const cards = await Promise.all((posts || []).map(async (post) => {
     const media = [...(post.post_media || [])].sort((a, b) => a.sort_order - b.sort_order)[0]
     if (!media?.storage_path) return null
-    return cardFrom(post, await signedUrl(media.storage_path), savedIds.has(post.id))
+    return cardFrom(post, await signedUrl(media.storage_path), savedIds.has(post.id), '', userId)
   }))
   const visible = cards.filter((post) => post?.url)
   return {
     mine: visible.filter((post) => post.userId === userId),
-    explore: visible.filter((post) => post.userId !== userId),
+    explore: shuffleByAccount(visible.filter((post) => post.userId !== userId), userId),
     saved: visible.filter((post) => post.saved && post.userId !== userId),
   }
+}
+
+function hashSeed(value) {
+  let hash = 2166136261
+  const text = value || 'guest'
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function shuffleByAccount(list, userId) {
+  const next = [...list]
+  let state = hashSeed(userId) || 1
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    const swapIndex = state % (index + 1)
+    const current = next[index]
+    next[index] = next[swapIndex]
+    next[swapIndex] = current
+  }
+  return next
 }
 
 export async function publishPost({ file, caption, author }) {
@@ -130,4 +164,30 @@ export async function toggleSave(postId, saved) {
     ? await supabase.from('post_saves').delete().eq('post_id', postId)
     : await supabase.from('post_saves').insert({ post_id: postId })
   return !result.error
+}
+
+export async function toggleLike(postId, liked) {
+  if (!supabase) return false
+  const result = liked
+    ? await supabase.from('post_likes').delete().eq('post_id', postId)
+    : await supabase.from('post_likes').insert({ post_id: postId })
+  return !result.error
+}
+
+export async function addComment(postId, content) {
+  if (!supabase) return null
+  const text = String(content || '').trim().slice(0, 1000)
+  if (!text) return null
+  const { data, error } = await supabase
+    .from('comments')
+    .insert({ post_id: postId, content: text })
+    .select('id, content, created_at, profiles!comments_user_id_fkey(username, display_name)')
+    .single()
+  if (error || !data) return null
+  const commenter = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles
+  return {
+    id: data.id,
+    text: data.content,
+    author: commenter?.display_name || commenter?.username || '',
+  }
 }
