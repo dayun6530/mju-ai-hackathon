@@ -84,9 +84,32 @@ export async function loadFeed(userId) {
   const visible = cards.filter((post) => post?.url)
   return {
     mine: visible.filter((post) => post.userId === userId),
-    explore: visible.filter((post) => post.userId !== userId),
+    explore: shuffleByAccount(visible.filter((post) => post.userId !== userId), userId),
     saved: visible.filter((post) => post.saved && post.userId !== userId),
   }
+}
+
+function hashSeed(value) {
+  let hash = 2166136261
+  const text = value || 'guest'
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function shuffleByAccount(list, userId) {
+  const next = [...list]
+  let state = hashSeed(userId) || 1
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    const swapIndex = state % (index + 1)
+    const current = next[index]
+    next[index] = next[swapIndex]
+    next[swapIndex] = current
+  }
+  return next
 }
 
 export async function publishPost({ file, caption, author }) {
