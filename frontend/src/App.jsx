@@ -7,8 +7,8 @@ import PlacesPage from '@/pages/PlacesPage.jsx'
 export default function App() {
   return (
     <Routes>
+      <Route index element={<HomePage />} />
       <Route element={<RootLayout />}>
-        <Route index element={<HomePage />} />
         <Route path="places" element={<PlacesPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
