@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import logoUrl from '../../../logo/서울을 담은 STOS 로고.png';
+import { entryPaths } from '@/entryPaths.js';
 
 const modes = [
   { id: 'scene', icon: ClapperIcon },
@@ -32,6 +34,29 @@ const feedSlots = Array.from({ length: 12 }, (_, index) => index);
 
 export default function HomePage() {
   const [feedOpen, setFeedOpen] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (photo) URL.revokeObjectURL(photo.url);
+    };
+  }, [photo]);
+
+  function chooseEntry(id) {
+    setEntry((current) => (current === id ? null : id));
+  }
+
+  function onSearch(event) {
+    event.preventDefault();
+    if (!entry) return;
+    const query = String(new FormData(event.currentTarget).get('query') ?? '').trim();
+    navigate(entryPaths[entry], {
+      state: {
+        entry,
+        query,
+        photo: photo?.file ?? null,
+      },
+    });
+  }
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
@@ -77,6 +102,13 @@ export default function HomePage() {
                 </span>
               </button>
             </div>
+
+            <form
+              className="mt-10 flex h-14 items-center gap-2 rounded-full border border-[#e7e7f2] bg-white py-1.5 pr-1.5 pl-1.5 shadow-[0_10px_30px_rgba(55,45,120,0.06)]"
+              onSubmit={onSearch}
+            >
+              <SearchField text={text} photo={photo} onPhotoChange={setPhoto} />
+            </form>
           </div>
         </section>
       </div>
@@ -311,27 +343,20 @@ function ProfileIcon() {
 
 function SearchField({ text }) {
   const inputRef = useRef(null);
-  const [photo, setPhoto] = useState(null);
-
-  useEffect(() => {
-    return () => {
-      if (photo) URL.revokeObjectURL(photo);
-    };
-  }, [photo]);
 
   function onFile(event) {
     const file = event.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    setPhoto((current) => {
-      if (current) URL.revokeObjectURL(current);
-      return url;
+    onPhotoChange((current) => {
+      if (current) URL.revokeObjectURL(current.url);
+      return { url, file };
     });
   }
 
   function clearPhoto() {
-    setPhoto((current) => {
-      if (current) URL.revokeObjectURL(current);
+    onPhotoChange((current) => {
+      if (current) URL.revokeObjectURL(current.url);
       return null;
     });
     if (inputRef.current) inputRef.current.value = '';
@@ -356,7 +381,7 @@ function SearchField({ text }) {
       </button>
       {photo ? (
         <span className="relative shrink-0">
-          <img src={photo} alt="" className="size-8 rounded-lg object-cover" />
+          <img src={photo.url} alt="" className="size-8 rounded-lg object-cover" />
           <button
             type="button"
             aria-label={text.photoRemove}
@@ -368,12 +393,13 @@ function SearchField({ text }) {
         </span>
       ) : null}
       <input
+        name="query"
         className="h-full min-w-0 flex-1 bg-transparent text-sm text-black outline-none placeholder:text-[#3a3a3a]"
         placeholder={text.placeholder}
         aria-label={text.searchLabel}
       />
       <button
-        type="button"
+        type="submit"
         aria-label={text.searchButton}
         className="grid size-10 shrink-0 place-items-center rounded-full bg-violet text-white"
       >
@@ -402,14 +428,16 @@ function PlusIcon() {
   );
 }
 
-function ModeChip({ mode, text }) {
+function ModeChip({ mode, text, selected, onSelect }) {
   const Icon = mode.icon;
 
   return (
     <button
       type="button"
       data-entry={mode.id}
-      className="flex items-center gap-3 rounded-full bg-chip py-2.5 pr-5 pl-2 text-left"
+      aria-pressed={selected}
+      onClick={() => onSelect(mode.id)}
+      className={`flex items-center gap-3 rounded-full py-2.5 pr-5 pl-2 text-left ${selected ? 'bg-[#efeaff] ring-2 ring-violet' : 'bg-chip'}`}
     >
       <span className="grid size-11 place-items-center rounded-full bg-white text-ink shadow-[0_2px_8px_rgba(40,30,90,0.06)] [&_svg]:size-6">
         <Icon />
