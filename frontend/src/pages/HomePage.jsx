@@ -11,6 +11,8 @@ const modes = [
 const languages = [
   { id: 'ko', label: '한국어' },
   { id: 'en', label: 'EN' },
+  { id: 'zh', label: '中文' },
+  { id: 'ja', label: '日本語' },
 ];
 
 const copy = {
@@ -41,6 +43,34 @@ const copy = {
       food: { title: 'Explore Food', line: '"What\'s this food?"' },
     },
     languageLabel: 'Language: English',
+  },
+  zh: {
+    headline: ['从K-内容', '到真实体验'],
+    sub: '在首尔找到你喜欢的K-内容中的场景和味道。',
+    placeholder: '例："这部剧的拍摄地在哪里？"',
+    attachPhoto: '添加照片',
+    photoRemove: '移除照片',
+    searchLabel: '输入场景或美食',
+    searchButton: '搜索',
+    modes: {
+      scene: { title: '查找地点', line: '"这是在哪里拍的？"' },
+      food: { title: '了解美食', line: '"这是什么食物？"' },
+    },
+    languageLabel: '语言：中文',
+  },
+  ja: {
+    headline: ['Kコンテンツから', '本物の体験へ'],
+    sub: '好きなKコンテンツのシーンと味を、ソウルで見つけてください。',
+    placeholder: '例：「このドラマのロケ地はどこ？」',
+    attachPhoto: '写真を添付',
+    photoRemove: '添付を削除',
+    searchLabel: 'シーンや食べ物を入力',
+    searchButton: '検索',
+    modes: {
+      scene: { title: '場所を探す', line: '"どこで撮った場所？"' },
+      food: { title: '食べ物を知る', line: '"この食べ物は何？"' },
+    },
+    languageLabel: '言語：日本語',
   },
 };
 
