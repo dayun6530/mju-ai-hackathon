@@ -179,11 +179,18 @@
 .stos .remove-photo { justify-self: start; border: 0; background: transparent; color: var(--purple); font-weight: 700; }
 .stos .composer { border-radius: 26px; padding: 8px 8px 8px 18px; }
 .stos .composer > input { padding: 0 8px; }
-.stos .food-notes h2 { font-size: 22px; margin: 16px 0 4px; }
-.stos .food-notes h2 span, .stos .read-as { color: var(--purple); font-weight: 650; }
+.stos .food-notes {
+  background: #f6f3ff; border-radius: 18px; padding: 14px 14px 8px;
+}
+.stos .detail .food-notes { background: white; padding: 0; }
+.stos .food-kicker { margin: 0; color: var(--purple); font-size: 13px; font-weight: 750; }
+.stos .food-notes h2 { font-size: 22px; margin: 4px 0; }
+.stos .read-as, .stos .order-read { color: var(--purple); font-weight: 700; }
 .stos .food-notes h3 { margin: 12px 0 4px; font-size: 14px; }
 .stos .food-notes p, .stos .food-notes li { color: #3d3868; line-height: 1.45; }
 .stos .food-notes ul { margin: 0; padding-left: 18px; }
+.stos .order-ko { margin: 0; font-size: 16px; }
+.stos .order-mean { margin: 4px 0 0; color: #6d678c; }
 .stos .similar { color: var(--muted); font-size: 13px; }
 .stos .source-link a, .stos .tip a { color: var(--purple); }
 .stos .result-card { max-height: 680px; overflow: auto; }
@@ -221,6 +228,13 @@
   display: flex; gap: 12px; align-items: flex-start;
 }
 .stos .pick-photo { width: 112px; height: 112px; object-fit: cover; border-radius: 14px; flex: none; }
+.stos .photo-missing {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  box-sizing: border-box; padding: 8px; text-align: center;
+  background: #ece7f6; color: #6a648c;
+}
+.stos .photo-missing svg { width: 28px; height: 28px; flex: none; }
+.stos .photo-missing > span { font-size: 11px; line-height: 1.3; font-weight: 650; white-space: pre-line; }
 .stos .pick-copy { min-width: 0; }
 .stos .pick.on { border-color: var(--purple); background: white; }
 .stos .pick-top { display: flex; align-items: center; gap: 8px; }
@@ -246,8 +260,9 @@
 .stos .area { color: var(--muted); margin-top: 0; }
 .stos .thumb { height: 150px; width: 100%; object-fit: cover; border-radius: 16px; }
 .stos .order {
-  background: #f6f3ff; border-radius: 12px; padding: 10px 12px; font-weight: 700;
+  background: #f6f3ff; border-radius: 16px; padding: 12px 14px; margin-top: 12px;
 }
+.stos .order h3 { margin-top: 0; }
 .stos .more h2, .stos .tip h2 { font-size: 16px; margin: 0 0 4px; }
 .stos .more p, .stos .tip p { margin: 0; color: var(--muted); }
 .stos .actions, .stos .detail-actions { display: flex; gap: 10px; margin-top: 16px; }

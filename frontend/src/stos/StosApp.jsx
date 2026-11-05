@@ -81,6 +81,24 @@ const DIET_LABEL = {
   ja: { Vegan: 'ビーガン', Halal: 'ハラール', Hindu: 'ヒンドゥー' },
 }
 
+const AVOID = {
+  Vegan: /돼지고기|돼지|소고기|쇠고기|닭고기|닭|고기|어묵|오뎅|멸치|액젓|젓갈|해물|새우|오징어|생선|햄|소시지|계란|달걀|우유|치즈|버터|꿀|육수|fish\s*cake|odeng|eomuk|pork|beef|chicken|meat|anchovy|shrimp|seafood|fish|ham|sausage|\begg\b|milk|cheese|butter|honey|broth|lard/i,
+  Halal: /돼지고기|돼지|햄|베이컨|소시지|라드|술|맥주|소주|와인|미림|pork|ham|bacon|sausage|lard|alcohol|beer|wine|mirin/i,
+  Hindu: /소고기|쇠고기|\bbeef\b/i,
+}
+
+function dietWarnings(food, lang) {
+  const lists = ['ko', 'en', 'zh', 'ja'].map((code) => food?.ingredients?.[code] || [])
+  const current = food?.ingredients?.[lang]?.length ? food.ingredients[lang] : (food?.ingredients?.ko || [])
+  return Object.entries(AVOID).flatMap(([who, pattern]) => {
+    const items = current.filter((item, index) => {
+      const versions = [item, ...lists.map((list) => list[index] || '')]
+      return versions.some((value) => pattern.test(value))
+    })
+    return items.length ? [{ who, items }] : []
+  })
+}
+
 const UI = {
   en: {
     home: 'Home',
@@ -118,9 +136,13 @@ const UI = {
     save: 'Save',
     with: 'Often eaten with',
     ingredients: 'What is usually in it',
-    diet: 'Good to know before you order',
+    diet: 'Check before you eat',
+    avoid: (items) => `Usually contains ${items}, which they do not eat.`,
     say: 'Say this',
     read: 'Read it as',
+    orderRead: 'Read the order as',
+    means: 'It means',
+    foodTitle: 'About this food',
     similarNote: 'A similar experience, not a confirmed filming location.',
     needKey: 'Groq is not connected yet. Add GROQ_API_KEY to frontend/.env and restart the dev server.',
     empty: 'Add a sentence or a photo first.',
@@ -134,6 +156,7 @@ const UI = {
     sameRestaurant: 'Same restaurant',
     similarRestaurant: 'Similar restaurant',
     source: 'Source',
+    noPhoto: 'Photo\nunavailable',
   },
   ko: {
     home: '홈',
@@ -171,9 +194,13 @@ const UI = {
     save: '저장',
     with: '함께 자주 먹는 것',
     ingredients: '보통 들어가는 재료',
-    diet: '주문 전에 알면 좋은 점',
+    diet: '먹으면 주의',
+    avoid: (items) => `보통 ${items}이(가) 들어가서, 먹지 않는 재료입니다.`,
     say: '이렇게 주문',
     read: '이렇게 읽어요',
+    orderRead: '주문은 이렇게 읽어요',
+    means: '뜻',
+    foodTitle: '이 음식',
     similarNote: '확인된 촬영지가 아니라 비슷한 경험입니다.',
     needKey: '아직 Groq가 연결되지 않았습니다. frontend/.env에 GROQ_API_KEY를 넣고 개발 서버를 다시 켜 주세요.',
     empty: '문장이나 사진을 먼저 넣어 주세요.',
@@ -187,6 +214,7 @@ const UI = {
     sameRestaurant: '같은 식당',
     similarRestaurant: '비슷한 식당',
     source: '출처',
+    noPhoto: '사진을\n못 불러왔어요',
   },
   zh: {
     home: '首页',
@@ -224,9 +252,13 @@ const UI = {
     save: '保存',
     with: '经常一起吃的',
     ingredients: '通常包含的食材',
-    diet: '点餐前可以了解',
+    diet: '食用前请注意',
+    avoid: (items) => `通常含有${items}，这类饮食一般不吃。`,
     say: '可以这样点',
     read: '这样读',
+    orderRead: '点餐罗马字',
+    means: '意思是',
+    foodTitle: '这道菜',
     similarNote: '这是相近的体验，不是已确认的拍摄地。',
     needKey: 'Groq 尚未连接。请把 GROQ_API_KEY 放入 frontend/.env 后重启开发服务器。',
     empty: '请先输入一句话或添加照片。',
@@ -240,6 +272,7 @@ const UI = {
     sameRestaurant: '同一家餐厅',
     similarRestaurant: '相似餐厅',
     source: '来源',
+    noPhoto: '图片\n未能加载',
   },
   ja: {
     home: 'ホーム',
@@ -277,9 +310,13 @@ const UI = {
     save: '保存',
     with: '一緒によく食べるもの',
     ingredients: 'ふつう入っている材料',
-    diet: '注文前に知っておくとよいこと',
+    diet: '食べる前に注意',
+    avoid: (items) => `通常${items}が入っているので、食べない材料です。`,
     say: 'こう注文',
     read: 'こう読みます',
+    orderRead: '注文はこう読みます',
+    means: '意味',
+    foodTitle: 'この料理',
     similarNote: '確認されたロケ地ではなく、近い体験です。',
     needKey: 'Groqがまだ接続されていません。frontend/.env に GROQ_API_KEY を入れて開発サーバーを再起動してください。',
     empty: '先に文章か写真を入れてください。',
@@ -293,6 +330,7 @@ const UI = {
     sameRestaurant: '同じ店',
     similarRestaurant: '似た店',
     source: '出典',
+    noPhoto: '画像を\n読み込めません',
   },
 }
 
@@ -320,16 +358,37 @@ function ModeIcon({ name }) {
   )
 }
 
-function PlacePhoto({ src, alt, className, fallback = '' }) {
+function MissingPhoto({ className, label }) {
+  return (
+    <span className={`${className} photo-missing`} role="img" aria-label={label}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3.5" y="5.5" width="17" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M7 15.5l3.2-3.2 2.2 2.1 2.4-2.6 2.7 3.7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <circle cx="9" cy="9.2" r="1.1" fill="currentColor" />
+        <path d="M4 4.5l16 15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+      <span>{label}</span>
+    </span>
+  )
+}
+
+function PlacePhoto({ src, alt, className, fallback = '', missingLabel = '' }) {
   const [current, setCurrent] = useState(src || fallback)
-  useEffect(() => setCurrent(src || fallback), [src, fallback])
-  if (!current) return null
+  const [failed, setFailed] = useState(!src && !fallback)
+  useEffect(() => {
+    setCurrent(src || fallback)
+    setFailed(!src && !fallback)
+  }, [src, fallback])
+  if (failed || !current) return <MissingPhoto className={className} label={missingLabel || alt} />
   return (
     <img
       className={className}
       src={current}
       alt={alt}
-      onError={() => setCurrent((value) => (fallback && value !== fallback ? fallback : ''))}
+      onError={() => {
+        if (fallback && current !== fallback) setCurrent(fallback)
+        else setFailed(true)
+      }}
     />
   )
 }
@@ -380,16 +439,24 @@ function FoodNotes({ food, copy, lang }) {
   const what = textOf(food, lang, 'what')
   const eaten = listOf(food, lang, 'eaten_with')
   const ingredients = listOf(food, lang, 'ingredients')
-  const diet = Array.isArray(food.diet) ? food.diet : []
-  const dish = textOf(food, lang, 'name') || (lang === 'ko' ? food.name_ko : '')
+  const warnings = dietWarnings(food, lang)
+  const dish = textOf(food, lang, 'name') || food.name_ko
+  const meaning = lang === 'ko' ? '' : textOf(food, lang, 'order')
+  if (!dish && !what && !food.order_ko && !eaten.length && !ingredients.length) return null
   return (
     <section className="food-notes">
-      <h2>
-        {dish} {lang === 'ko' && food.romanization ? <span>{food.romanization}</span> : null}
-      </h2>
-      {lang !== 'ko' && food.romanization && <p className="read-as">{copy.read}: {food.romanization}</p>}
+      <p className="food-kicker">{copy.foodTitle}</p>
+      <h2>{dish}</h2>
+      {food.romanization && <p className="read-as">{copy.read}: {food.romanization}</p>}
       {what && <p>{what}</p>}
-      {food.order_ko && <p className="order">{copy.say}: “{food.order_ko}”</p>}
+      {(food.order_ko || food.order_romanization) && (
+        <div className="order">
+          <h3>{copy.say}</h3>
+          {food.order_ko && <p className="order-ko">“{food.order_ko}”</p>}
+          {food.order_romanization && <p className="order-read">{copy.orderRead}: {food.order_romanization}</p>}
+          {meaning && <p className="order-mean">{copy.means}: {meaning}</p>}
+        </div>
+      )}
       {eaten.length > 0 && (
         <>
           <h3>{copy.with}</h3>
@@ -402,13 +469,13 @@ function FoodNotes({ food, copy, lang }) {
           <p>{ingredients.join(', ')}</p>
         </>
       )}
-      {diet.length > 0 && (
+      {warnings.length > 0 && (
         <>
           <h3>{copy.diet}</h3>
           <ul>
-            {diet.map((item) => (
+            {warnings.map((item) => (
               <li key={item.who}>
-                <strong>{DIET_LABEL[lang]?.[item.who] || item.who}.</strong> {textOf(item, lang, 'note')}
+                <strong>{DIET_LABEL[lang]?.[item.who] || item.who}.</strong> {copy.avoid(item.items.join(', '))}
               </li>
             ))}
           </ul>
@@ -553,9 +620,9 @@ export default function App({ session = null, onHome = null }) {
   }
 
   function openDirections() {
-    const destination = current?.lat
-      ? `${current.lat},${current.lng}`
-      : addressOf(current, 'ko') || `${placeName} Seoul`
+    const name = textOf(current, 'ko', 'name') || placeName
+    const address = addressOf(current, 'ko')
+    const destination = current?.directions || [name, address].filter(Boolean).join(' ')
     const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`
     window.open(url, '_blank', 'noopener,noreferrer')
   }
@@ -800,6 +867,7 @@ export default function App({ session = null, onHome = null }) {
       {screen === 'results' && current && (
         <main className="results">
           <aside className="recommend">
+            <FoodNotes food={result.food} copy={copy} lang={lang} />
             <h2>{copy.picks(places.length)}</h2>
             {places.map((place, index) => {
               const name = textOf(place, lang, 'name')
@@ -811,7 +879,7 @@ export default function App({ session = null, onHome = null }) {
                   className={index === selected ? 'pick on' : 'pick'}
                   onClick={() => setSelected(index)}
                 >
-                  <PlacePhoto className="pick-photo" src={place.image} alt={name} />
+                  <PlacePhoto className="pick-photo" src={place.image} alt={name} missingLabel={copy.noPhoto} />
                   <span className="pick-copy">
                     <span className="pick-top">
                       <span className="rank">{index + 1}</span>
@@ -830,7 +898,6 @@ export default function App({ session = null, onHome = null }) {
                 {copy.source}: <a href={current.source_url} target="_blank" rel="noreferrer">{textOf(current, lang, 'source_title') || copy.source}</a>
               </p>
             )}
-            <FoodNotes food={result.food} copy={copy} lang={lang} />
             <div className="actions">
               <button type="button" className="ghost" onClick={() => setScreen('detail')}>{copy.view} ↗</button>
               <button type="button" className="solid" onClick={openDirections}>{copy.directions}</button>

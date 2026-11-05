@@ -4,6 +4,8 @@ import StosApp from '@/stos/StosApp.jsx';
 import { fileToDataUrl } from '@/stos/image.js';
 import LoginModal from '@/components/LoginModal.jsx';
 import { getUser, logout } from '@/auth.js';
+import { supabase } from '@/supabase.js';
+import { loadFeed, publishPost, toggleSave } from '@/feed.js';
 
 const modes = [
   { id: 'scene', icon: ClapperIcon },
@@ -265,7 +267,7 @@ export default function HomePage() {
   const [session, setSession] = useState(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [user, setUser] = useState(() => getUser());
-  const [posts, setPosts] = useState([]);
+  const [feed, setFeed] = useState({ mine: [], explore: [], saved: [] });
   const [composerOpen, setComposerOpen] = useState(false);
   const [feedFocus, setFeedFocus] = useState(0);
   const [lang, setLang] = useState('ko');
@@ -280,6 +282,29 @@ export default function HomePage() {
       if (photo) URL.revokeObjectURL(photo.url);
     };
   }, [photo]);
+
+  useEffect(() => {
+    let alive = true;
+    supabase?.auth.getSession().then(({ data }) => {
+      const sessionUser = data.session?.user;
+      if (!alive || !sessionUser) return;
+      setUser({ email: sessionUser.email || '', id: sessionUser.id });
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const ticket = ++feedLoad.current;
+    let alive = true;
+    loadFeed(user?.id || '').then((next) => {
+      if (alive && ticket === feedLoad.current && next) setFeed(next);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [user?.id]);
 
   function chooseEntry(id) {
     setEntry((current) => (current === id ? null : id));
@@ -382,17 +407,51 @@ export default function HomePage() {
         open={feedOpen}
         text={text}
         loggedIn={Boolean(user)}
-        posts={posts}
+        mine={feed.mine}
+        explore={feed.explore}
+        saved={feed.saved}
         feedFocus={feedFocus}
         onUpdatePost={(id, patch) => {
-          setPosts((current) =>
-            current.map((post) => (post.id === id ? { ...post, ...patch(post) } : post)),
-          );
+          let change = null;
+          setFeed((current) => {
+            const found = [...current.mine, ...current.explore].find((post) => post.id === id);
+            if (!found) return current;
+            const next = { ...found, ...patch(found) };
+            const bookmarkedChanged = Boolean(next.bookmarked) !== Boolean(found.bookmarked);
+            if (bookmarkedChanged && !user) {
+              change = { login: true };
+              return current;
+            }
+            if (bookmarkedChanged) {
+              next.saved = Boolean(next.bookmarked);
+              change = { id, wasSaved: Boolean(found.bookmarked) };
+            }
+            const replace = (list) => list.map((item) => (item.id === id ? { ...item, ...next } : item));
+            const saved = bookmarkedChanged
+              ? (next.bookmarked && next.userId !== user?.id
+                ? [{ ...next }, ...current.saved.filter((item) => item.id !== id)]
+                : current.saved.filter((item) => item.id !== id))
+              : replace(current.saved);
+            return {
+              mine: replace(current.mine),
+              explore: replace(current.explore),
+              saved,
+            };
+          });
+          if (change?.login) {
+            setLoginOpen(true);
+            return;
+          }
+          if (!change) return;
+          void toggleSave(change.id, change.wasSaved).then(async (ok) => {
+            if (!ok) setFeed(await loadFeed(user?.id || ''));
+          });
         }}
         onLogin={() => setLoginOpen(true)}
         onLogout={() => {
           logout();
           setUser(null);
+          setFeed((current) => ({ mine: [], explore: current.explore, saved: [] }));
         }}
         onToggle={() => setFeedOpen((open) => !open)}
       />
@@ -400,21 +459,20 @@ export default function HomePage() {
         <CreatePostModal
           text={text}
           onClose={() => setComposerOpen(false)}
-          onShare={(post) => {
-            setPosts((current) => [
-              {
-                ...post,
-                author: user?.email?.split('@')[0] ?? '',
-                liked: false,
-                likeCount: 0,
-                comments: [],
-                bookmarked: false,
-              },
-              ...current,
-            ]);
+          onShare={async (draft) => {
+            const post = await publishPost({
+              ...draft,
+              author: user?.email?.split('@')[0] ?? '',
+            });
+            if (!post) return false;
+            const ticket = ++feedLoad.current;
+            setFeed((current) => ({ ...current, mine: [post, ...current.mine.filter((item) => item.id !== post.id)] }));
+            const next = await loadFeed(user?.id || '');
+            if (ticket === feedLoad.current && next) setFeed(next);
             setComposerOpen(false);
             setFeedOpen(true);
             setFeedFocus((value) => value + 1);
+            return true;
           }}
         />
       ) : null}
@@ -442,6 +500,7 @@ function FeedPanel({ open, text, loggedIn, posts, feedFocus, onUpdatePost, onLog
   const [tagQuery, setTagQuery] = useState('');
   const [searched, setSearched] = useState(false);
   const [openPostId, setOpenPostId] = useState(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!feedFocus) return;
@@ -483,6 +542,11 @@ function FeedPanel({ open, text, loggedIn, posts, feedFocus, onUpdatePost, onLog
     setSearched(false);
     setTagQuery(hashtagLabel(next));
   }
+
+  const source = currentTab === '내 피드' ? mine : currentTab === '저장됨' ? saved : explore;
+  const visible = query
+    ? source.filter((post) => post.caption.toLowerCase().includes(query.toLowerCase()))
+    : source;
 
   return (
     <>
@@ -596,12 +660,15 @@ function FeedPanel({ open, text, loggedIn, posts, feedFocus, onUpdatePost, onLog
         ) : (
           <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
             {feedSlots.map((slot) => (
-              <div
-                key={`${tab}-${slot}`}
-                className="aspect-[3/4] rounded-2xl bg-[#e7e9f2]"
-              />
+              <div key={slot} className="aspect-[3/4] rounded-2xl bg-[#e7e9f2]" />
             ))}
           </div>
+        ) : (
+          <MyFeed
+            posts={visible}
+            onOpen={setOpenPostId}
+            blankEmpty={currentTab === '저장됨' && !query}
+          />
         )}
       </aside>
       {openPost ? (
@@ -845,6 +912,7 @@ function CreatePostModal({ text, onClose, onShare }) {
   const inputRef = useRef(null);
   const ownedUrl = useRef(null);
   const [draftUrl, setDraftUrl] = useState(null);
+  const [draftFile, setDraftFile] = useState(null);
   const [step, setStep] = useState('pick');
   const [caption, setCaption] = useState('');
   const [dragOver, setDragOver] = useState(false);
@@ -868,18 +936,15 @@ function CreatePostModal({ text, onClose, onShare }) {
     if (ownedUrl.current) URL.revokeObjectURL(ownedUrl.current);
     const url = URL.createObjectURL(file);
     ownedUrl.current = url;
+    setDraftFile(file);
     setDraftUrl(url);
     setStep('preview');
   }
 
-  function share() {
-    if (!draftUrl) return;
-    ownedUrl.current = null;
-    onShare({
-      id: crypto.randomUUID(),
-      url: draftUrl,
-      caption: caption.trim(),
-    });
+  async function share() {
+    if (!draftFile) return;
+    const saved = await onShare({ file: draftFile, caption: caption.trim() });
+    if (saved) ownedUrl.current = null;
   }
 
   return (
