@@ -4,6 +4,8 @@ import StosApp from '@/stos/StosApp.jsx';
 import { fileToDataUrl } from '@/stos/image.js';
 import LoginModal from '@/components/LoginModal.jsx';
 import { getUser, logout } from '@/auth.js';
+import { supabase } from '@/supabase.js';
+import { loadFeed, publishPost, toggleSave } from '@/feed.js';
 
 const modes = [
   { id: 'scene', icon: ClapperIcon },
@@ -58,6 +60,10 @@ const text = {
   errorExists: '이미 가입된 이메일이에요.',
   errorInvalid: '이메일 또는 비밀번호가 올바르지 않아요.',
   errorMissing: '가입되지 않은 이메일이에요.',
+  errorConfirm: '이메일로 보낸 확인을 마친 뒤 로그인해 주세요.',
+  errorConfig: 'Supabase 연결 정보를 찾지 못했습니다.',
+  errorRate: '가입 요청이 잠시 몰렸습니다. 조금 뒤에 다시 시도해 주세요.',
+  signupPending: '가입 메일을 보냈어요. 확인 링크를 누른 뒤 로그인해 주세요.',
   resetDone: '비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.',
 };
 
@@ -70,7 +76,7 @@ export default function HomePage() {
   const [session, setSession] = useState(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [user, setUser] = useState(() => getUser());
-  const [posts, setPosts] = useState([]);
+  const [feed, setFeed] = useState({ mine: [], explore: [], saved: [] });
   const [composerOpen, setComposerOpen] = useState(false);
   const [feedFocus, setFeedFocus] = useState(0);
   const lang = 'ko';
@@ -80,6 +86,28 @@ export default function HomePage() {
       if (photo) URL.revokeObjectURL(photo.url);
     };
   }, [photo]);
+
+  useEffect(() => {
+    let alive = true;
+    supabase?.auth.getSession().then(({ data }) => {
+      const sessionUser = data.session?.user;
+      if (!alive || !sessionUser) return;
+      setUser({ email: sessionUser.email || '', id: sessionUser.id });
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    loadFeed(user?.id || '').then((next) => {
+      if (alive) setFeed(next);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [user?.id]);
 
   function chooseEntry(id) {
     setEntry((current) => (current === id ? null : id));
@@ -178,38 +206,68 @@ export default function HomePage() {
       <FeedPanel
         open={feedOpen}
         loggedIn={Boolean(user)}
-        posts={posts}
+        mine={feed.mine}
+        explore={feed.explore}
+        saved={feed.saved}
         feedFocus={feedFocus}
         onUpdatePost={(id, patch) => {
-          setPosts((current) =>
-            current.map((post) => (post.id === id ? { ...post, ...patch(post) } : post)),
-          );
+          let change = null;
+          setFeed((current) => {
+            const found = [...current.mine, ...current.explore].find((post) => post.id === id);
+            if (!found) return current;
+            const next = { ...found, ...patch(found) };
+            const bookmarkedChanged = Boolean(next.bookmarked) !== Boolean(found.bookmarked);
+            if (bookmarkedChanged && !user) {
+              change = { login: true };
+              return current;
+            }
+            if (bookmarkedChanged) {
+              next.saved = Boolean(next.bookmarked);
+              change = { id, wasSaved: Boolean(found.bookmarked) };
+            }
+            const replace = (list) => list.map((item) => (item.id === id ? { ...item, ...next } : item));
+            const saved = bookmarkedChanged
+              ? (next.bookmarked && next.userId !== user?.id
+                ? [{ ...next }, ...current.saved.filter((item) => item.id !== id)]
+                : current.saved.filter((item) => item.id !== id))
+              : replace(current.saved);
+            return {
+              mine: replace(current.mine),
+              explore: replace(current.explore),
+              saved,
+            };
+          });
+          if (change?.login) {
+            setLoginOpen(true);
+            return;
+          }
+          if (!change) return;
+          void toggleSave(change.id, change.wasSaved).then(async (ok) => {
+            if (!ok) setFeed(await loadFeed(user?.id || ''));
+          });
         }}
         onLogin={() => setLoginOpen(true)}
         onLogout={() => {
           logout();
           setUser(null);
+          setFeed((current) => ({ mine: [], explore: current.explore, saved: [] }));
         }}
         onToggle={() => setFeedOpen((open) => !open)}
       />
       {composerOpen ? (
         <CreatePostModal
           onClose={() => setComposerOpen(false)}
-          onShare={(post) => {
-            setPosts((current) => [
-              {
-                ...post,
-                author: user?.email?.split('@')[0] ?? '',
-                liked: false,
-                likeCount: 0,
-                comments: [],
-                bookmarked: false,
-              },
-              ...current,
-            ]);
+          onShare={async (draft) => {
+            const post = await publishPost({
+              ...draft,
+              author: user?.email?.split('@')[0] ?? '',
+            });
+            if (!post) return false;
+            setFeed((current) => ({ ...current, mine: [post, ...current.mine] }));
             setComposerOpen(false);
             setFeedOpen(true);
             setFeedFocus((value) => value + 1);
+            return true;
           }}
         />
       ) : null}
@@ -231,10 +289,11 @@ export default function HomePage() {
   );
 }
 
-function FeedPanel({ open, loggedIn, posts, feedFocus, onUpdatePost, onLogin, onLogout, onToggle }) {
+function FeedPanel({ open, loggedIn, mine, explore, saved, feedFocus, onUpdatePost, onLogin, onLogout, onToggle }) {
   const [tab, setTab] = useState(0);
   const [searched, setSearched] = useState(false);
   const [openPostId, setOpenPostId] = useState(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!feedFocus) return;
@@ -248,7 +307,7 @@ function FeedPanel({ open, loggedIn, posts, feedFocus, onUpdatePost, onLogin, on
       : !loggedIn && (currentTab === '내 피드' || currentTab === '저장됨')
         ? currentTab
         : null;
-  const openPost = posts.find((post) => post.id === openPostId) ?? null;
+  const openPost = [...mine, ...explore, ...saved].find((post) => post.id === openPostId) ?? null;
 
   function chooseTab(index) {
     setTab(index);
@@ -257,10 +316,19 @@ function FeedPanel({ open, loggedIn, posts, feedFocus, onUpdatePost, onLogin, on
 
   function onFeedSearch(event) {
     event.preventDefault();
-    if (loggedIn) return;
-    const query = String(new FormData(event.currentTarget).get('query') ?? '').trim();
-    if (query) setSearched(true);
+    const value = String(new FormData(event.currentTarget).get('query') ?? '').trim();
+    if (!loggedIn) {
+      if (value) setSearched(true);
+      return;
+    }
+    setQuery(value);
+    setSearched(false);
   }
+
+  const source = currentTab === '내 피드' ? mine : currentTab === '저장됨' ? saved : explore;
+  const visible = query
+    ? source.filter((post) => post.caption.toLowerCase().includes(query.toLowerCase()))
+    : source;
 
   return (
     <>
@@ -341,23 +409,18 @@ function FeedPanel({ open, loggedIn, posts, feedFocus, onUpdatePost, onLogin, on
               {`"${loginGate}" 기능은 로그인 후 이용하실 수 있습니다.`}
             </p>
           </div>
-        ) : currentTab === '내 피드' ? (
-          <MyFeed posts={posts} onOpen={setOpenPostId} />
-        ) : currentTab === '저장됨' ? (
-          <MyFeed
-            posts={posts.filter((post) => post.bookmarked)}
-            onOpen={setOpenPostId}
-            blankEmpty
-          />
-        ) : (
+        ) : currentTab === '탐색' && visible.length === 0 && !query ? (
           <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
             {feedSlots.map((slot) => (
-              <div
-                key={`${tab}-${slot}`}
-                className="aspect-[3/4] rounded-2xl bg-[#e7e9f2]"
-              />
+              <div key={slot} className="aspect-[3/4] rounded-2xl bg-[#e7e9f2]" />
             ))}
           </div>
+        ) : (
+          <MyFeed
+            posts={visible}
+            onOpen={setOpenPostId}
+            blankEmpty={currentTab === '저장됨' && !query}
+          />
         )}
       </aside>
       {openPost ? (
@@ -589,6 +652,7 @@ function CreatePostModal({ onClose, onShare }) {
   const inputRef = useRef(null);
   const ownedUrl = useRef(null);
   const [draftUrl, setDraftUrl] = useState(null);
+  const [draftFile, setDraftFile] = useState(null);
   const [step, setStep] = useState('pick');
   const [caption, setCaption] = useState('');
   const [dragOver, setDragOver] = useState(false);
@@ -612,18 +676,15 @@ function CreatePostModal({ onClose, onShare }) {
     if (ownedUrl.current) URL.revokeObjectURL(ownedUrl.current);
     const url = URL.createObjectURL(file);
     ownedUrl.current = url;
+    setDraftFile(file);
     setDraftUrl(url);
     setStep('preview');
   }
 
-  function share() {
-    if (!draftUrl) return;
-    ownedUrl.current = null;
-    onShare({
-      id: crypto.randomUUID(),
-      url: draftUrl,
-      caption: caption.trim(),
-    });
+  async function share() {
+    if (!draftFile) return;
+    const saved = await onShare({ file: draftFile, caption: caption.trim() });
+    if (saved) ownedUrl.current = null;
   }
 
   return (

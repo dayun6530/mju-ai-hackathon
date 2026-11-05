@@ -10,6 +10,9 @@ const errorText = {
   exists: 'errorExists',
   invalid: 'errorInvalid',
   missing: 'errorMissing',
+  confirm: 'errorConfirm',
+  config: 'errorConfig',
+  rate: 'errorRate',
 }
 
 export default function LoginModal({ text, logoUrl, onClose, onSuccess }) {
@@ -38,6 +41,7 @@ export default function LoginModal({ text, logoUrl, onClose, onSuccess }) {
     event.preventDefault()
     if (busy) return
     setError('')
+    setNotice('')
     const needsPassword = view !== 'forgot'
     if (!email.trim() || (needsPassword && !password)) {
       setError(text.errorRequired)
@@ -64,6 +68,13 @@ export default function LoginModal({ text, logoUrl, onClose, onSuccess }) {
         const result = await signup({ email, password })
         if (!result.ok) {
           setError(text[errorText[result.error]])
+          return
+        }
+        if (result.pending) {
+          setPassword('')
+          setConfirm('')
+          setView('login')
+          setNotice(text.signupPending)
           return
         }
         onSuccess(result.user)
