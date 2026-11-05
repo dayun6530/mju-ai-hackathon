@@ -270,6 +270,7 @@ export default function HomePage() {
   const [feed, setFeed] = useState({ mine: [], explore: [], saved: [] });
   const [composerOpen, setComposerOpen] = useState(false);
   const [feedFocus, setFeedFocus] = useState(0);
+  const feedLoad = useRef(0);
   const [lang, setLang] = useState('ko');
   const text = copy[lang];
 
@@ -494,13 +495,12 @@ export default function HomePage() {
   );
 }
 
-function FeedPanel({ open, text, loggedIn, posts, feedFocus, onUpdatePost, onLogin, onLogout, onToggle }) {
+function FeedPanel({ open, text, loggedIn, mine, explore, saved, feedFocus, onUpdatePost, onLogin, onLogout, onToggle }) {
   const [tab, setTab] = useState(0);
   const [query, setQuery] = useState('');
   const [tagQuery, setTagQuery] = useState('');
   const [searched, setSearched] = useState(false);
   const [openPostId, setOpenPostId] = useState(null);
-  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!feedFocus) return;
@@ -516,9 +516,10 @@ function FeedPanel({ open, text, loggedIn, posts, feedFocus, onUpdatePost, onLog
       : !loggedIn && (tab === 0 || tab === 2)
         ? text.feedTabs[tab]
         : null;
-  const openPost = posts.find((post) => post.id === openPostId) ?? null;
+  const source = tab === 0 ? mine : tab === 2 ? saved : explore;
+  const openPost = [...mine, ...explore, ...saved].find((post) => post.id === openPostId) ?? null;
   const taggedPosts = activeTag
-    ? posts.filter((post) => postHasTag(post, activeTag))
+    ? source.filter((post) => postHasTag(post, activeTag))
     : [];
 
   function clearSearch() {
@@ -542,11 +543,6 @@ function FeedPanel({ open, text, loggedIn, posts, feedFocus, onUpdatePost, onLog
     setSearched(false);
     setTagQuery(hashtagLabel(next));
   }
-
-  const source = currentTab === '내 피드' ? mine : currentTab === '저장됨' ? saved : explore;
-  const visible = query
-    ? source.filter((post) => post.caption.toLowerCase().includes(query.toLowerCase()))
-    : source;
 
   return (
     <>
@@ -649,26 +645,22 @@ function FeedPanel({ open, text, loggedIn, posts, feedFocus, onUpdatePost, onLog
             <MyFeed text={text} posts={taggedPosts} onOpen={setOpenPostId} blankEmpty />
           </div>
         ) : tab === 0 ? (
-          <MyFeed text={text} posts={posts} onOpen={setOpenPostId} />
+          <MyFeed text={text} posts={mine} onOpen={setOpenPostId} />
         ) : tab === 2 ? (
           <MyFeed
             text={text}
-            posts={posts.filter((post) => post.bookmarked)}
+            posts={saved}
             onOpen={setOpenPostId}
             blankEmpty
           />
-        ) : (
+        ) : explore.length === 0 ? (
           <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
             {feedSlots.map((slot) => (
               <div key={slot} className="aspect-[3/4] rounded-2xl bg-[#e7e9f2]" />
             ))}
           </div>
         ) : (
-          <MyFeed
-            posts={visible}
-            onOpen={setOpenPostId}
-            blankEmpty={currentTab === '저장됨' && !query}
-          />
+          <MyFeed text={text} posts={explore} onOpen={setOpenPostId} />
         )}
       </aside>
       {openPost ? (
