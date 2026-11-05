@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import logoUrl from '../../../logo/서울을 담은 STOS 로고.png';
 import StosApp from '@/stos/StosApp.jsx';
 import { fileToDataUrl } from '@/stos/image.js';
+import LoginModal from '@/components/LoginModal.jsx';
+import { getUser, logout } from '@/auth.js';
 
 const modes = [
   { id: 'scene', icon: ClapperIcon },
@@ -24,6 +26,28 @@ const copy = {
     photoRemove: '첨부 삭제',
     searchLabel: '장면, 분위기, 음식을 입력',
     searchButton: '검색',
+    login: '로그인',
+    email: '이메일',
+    password: '비밀번호',
+    signup: '회원가입',
+    forgot: '비밀번호 찾기',
+    loginNote: '피드는 로그인 후 이용할 수 있어요.',
+    close: '닫기',
+    logout: '로그아웃',
+    confirmPassword: '비밀번호 확인',
+    signupSubmit: '가입하기',
+    forgotNext: '다음',
+    resetTitle: '새 비밀번호',
+    resetSubmit: '변경하기',
+    backToLogin: '로그인으로',
+    errorRequired: '필요한 항목을 입력해 주세요.',
+    errorEmail: '이메일 형식을 확인해 주세요.',
+    errorShort: '비밀번호는 8자 이상이어야 해요.',
+    errorMismatch: '비밀번호가 서로 달라요.',
+    errorExists: '이미 가입된 이메일이에요.',
+    errorInvalid: '이메일 또는 비밀번호가 올바르지 않아요.',
+    errorMissing: '가입되지 않은 이메일이에요.',
+    resetDone: '비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.',
     modes: {
       scene: { title: '장소 찾기', line: '"어디서 찍은 장소일까?"' },
       food: { title: '음식 알아보기', line: '"이 음식이 뭐야?"' },
@@ -38,6 +62,28 @@ const copy = {
     photoRemove: 'Remove photo',
     searchLabel: 'Describe a scene, vibe, or food',
     searchButton: 'Search',
+    login: 'Log in',
+    email: 'Email',
+    password: 'Password',
+    signup: 'Sign up',
+    forgot: 'Forgot password',
+    loginNote: 'You can use the feed after logging in.',
+    close: 'Close',
+    logout: 'Log out',
+    confirmPassword: 'Confirm password',
+    signupSubmit: 'Create account',
+    forgotNext: 'Continue',
+    resetTitle: 'New password',
+    resetSubmit: 'Update',
+    backToLogin: 'Back to log in',
+    errorRequired: 'Fill in the required fields.',
+    errorEmail: 'Check the email format.',
+    errorShort: 'Use at least 8 characters.',
+    errorMismatch: 'Passwords do not match.',
+    errorExists: 'That email is already registered.',
+    errorInvalid: 'Email or password is incorrect.',
+    errorMissing: 'No account uses that email.',
+    resetDone: 'Password updated. Log in with the new password.',
     modes: {
       scene: { title: 'Find a Scene', line: '"Where was this filmed?"' },
       food: { title: 'Explore Food', line: '"What\'s this food?"' },
@@ -52,6 +98,28 @@ const copy = {
     photoRemove: '移除照片',
     searchLabel: '输入场景或美食',
     searchButton: '搜索',
+    login: '登录',
+    email: '邮箱',
+    password: '密码',
+    signup: '注册',
+    forgot: '找回密码',
+    loginNote: '登录后可以使用动态。',
+    close: '关闭',
+    logout: '退出',
+    confirmPassword: '确认密码',
+    signupSubmit: '注册',
+    forgotNext: '下一步',
+    resetTitle: '新密码',
+    resetSubmit: '更改',
+    backToLogin: '返回登录',
+    errorRequired: '请填写必填项。',
+    errorEmail: '请检查邮箱格式。',
+    errorShort: '密码至少需要 8 个字符。',
+    errorMismatch: '两次输入的密码不一致。',
+    errorExists: '这个邮箱已经注册过了。',
+    errorInvalid: '邮箱或密码不正确。',
+    errorMissing: '没有使用这个邮箱的账号。',
+    resetDone: '密码已更改。请用新密码登录。',
     modes: {
       scene: { title: '查找地点', line: '"这是在哪里拍的？"' },
       food: { title: '了解美食', line: '"这是什么食物？"' },
@@ -66,6 +134,28 @@ const copy = {
     photoRemove: '添付を削除',
     searchLabel: 'シーンや食べ物を入力',
     searchButton: '検索',
+    login: 'ログイン',
+    email: 'メール',
+    password: 'パスワード',
+    signup: '会員登録',
+    forgot: 'パスワードを探す',
+    loginNote: 'フィードはログイン後に利用できます。',
+    close: '閉じる',
+    logout: 'ログアウト',
+    confirmPassword: 'パスワード確認',
+    signupSubmit: '登録する',
+    forgotNext: '次へ',
+    resetTitle: '新しいパスワード',
+    resetSubmit: '変更する',
+    backToLogin: 'ログインへ',
+    errorRequired: '必要な項目を入力してください。',
+    errorEmail: 'メールアドレスの形式を確認してください。',
+    errorShort: 'パスワードは8文字以上にしてください。',
+    errorMismatch: 'パスワードが一致しません。',
+    errorExists: 'このメールアドレスはすでに登録されています。',
+    errorInvalid: 'メールアドレスまたはパスワードが正しくありません。',
+    errorMissing: 'このメールアドレスのアカウントはありません。',
+    resetDone: 'パスワードを変更しました。新しいパスワードでログインしてください。',
     modes: {
       scene: { title: '場所を探す', line: '"どこで撮った場所？"' },
       food: { title: '食べ物を知る', line: '"この食べ物は何？"' },
@@ -79,6 +169,8 @@ export default function HomePage() {
   const [entry, setEntry] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [session, setSession] = useState(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [user, setUser] = useState(() => getUser());
   const text = copy[lang];
 
   useEffect(() => {
@@ -130,11 +222,38 @@ export default function HomePage() {
             alt="STOS, Scene to Seoul"
             className="logo-mark"
           />
-          <LanguageToggle
-            lang={lang}
-            label={text.languageLabel}
-            onChange={setLang}
-          />
+          <div className="ml-auto flex origin-top-right scale-[1.3] items-center gap-5">
+            {user ? (
+              <>
+                <span className="max-w-36 truncate text-sm font-semibold text-black" title={user.email}>
+                  {user.email}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    setUser(null);
+                  }}
+                  className="text-sm font-semibold text-black"
+                >
+                  {text.logout}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLoginOpen(true)}
+                className="text-sm font-semibold text-black"
+              >
+                {text.login}
+              </button>
+            )}
+            <LanguageToggle
+              lang={lang}
+              label={text.languageLabel}
+              onChange={setLang}
+            />
+          </div>
         </header>
 
         <section className="flex w-[min(720px,62%)] flex-1 flex-col py-4">
@@ -173,6 +292,15 @@ export default function HomePage() {
         </section>
       </div>
 
+      {loginOpen ? (
+        <LoginModal
+          text={text}
+          logoUrl={logoUrl}
+          onClose={() => setLoginOpen(false)}
+          onSuccess={setUser}
+        />
+      ) : null}
+
       <p className="script pointer-events-none absolute right-12 bottom-12 z-10 text-right text-white">
         Discover Seoul
         <br />
@@ -204,7 +332,7 @@ function LanguageToggle({ lang, label, onChange }) {
 
   return (
     <div
-      className="relative ml-auto origin-top-right scale-[1.3]"
+      className="relative"
       ref={rootRef}
     >
       <button
