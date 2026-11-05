@@ -65,13 +65,16 @@ async function prepareImage(file) {
 export async function loadFeed(userId) {
   const postsQuery = supabase
     .from('posts')
-    .select('id, user_id, caption, created_at, profiles(username, display_name), post_media(storage_path, sort_order)')
+    .select('id, user_id, caption, created_at, profiles!posts_user_id_fkey(username, display_name), post_media(storage_path, sort_order)')
     .eq('status', 'published')
     .order('created_at', { ascending: false })
   const savesQuery = userId
     ? supabase.from('post_saves').select('post_id')
     : Promise.resolve({ data: [] })
-  const [{ data: posts }, { data: saves }] = await Promise.all([postsQuery, savesQuery])
+  const [postsResult, savesResult] = await Promise.all([postsQuery, savesQuery])
+  if (postsResult.error) return null
+  const posts = postsResult.data
+  const saves = savesResult.data
   const savedIds = new Set((saves || []).map((item) => item.post_id))
   const cards = await Promise.all((posts || []).map(async (post) => {
     const media = [...(post.post_media || [])].sort((a, b) => a.sort_order - b.sort_order)[0]

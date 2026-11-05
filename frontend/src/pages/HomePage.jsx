@@ -79,6 +79,7 @@ export default function HomePage() {
   const [feed, setFeed] = useState({ mine: [], explore: [], saved: [] });
   const [composerOpen, setComposerOpen] = useState(false);
   const [feedFocus, setFeedFocus] = useState(0);
+  const feedLoad = useRef(0);
   const lang = 'ko';
 
   useEffect(() => {
@@ -100,9 +101,10 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    const ticket = ++feedLoad.current;
     let alive = true;
     loadFeed(user?.id || '').then((next) => {
-      if (alive) setFeed(next);
+      if (alive && ticket === feedLoad.current && next) setFeed(next);
     });
     return () => {
       alive = false;
@@ -263,7 +265,10 @@ export default function HomePage() {
               author: user?.email?.split('@')[0] ?? '',
             });
             if (!post) return false;
-            setFeed((current) => ({ ...current, mine: [post, ...current.mine] }));
+            const ticket = ++feedLoad.current;
+            setFeed((current) => ({ ...current, mine: [post, ...current.mine.filter((item) => item.id !== post.id)] }));
+            const next = await loadFeed(user?.id || '');
+            if (ticket === feedLoad.current && next) setFeed(next);
             setComposerOpen(false);
             setFeedOpen(true);
             setFeedFocus((value) => value + 1);
