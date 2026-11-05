@@ -139,13 +139,6 @@ export default function HomePage() {
               {text.sub}
             </p>
 
-            <form
-              className="mt-10 flex h-14 items-center gap-2 rounded-full border border-[#e7e7f2] bg-white py-1.5 pr-1.5 pl-1.5 shadow-[0_10px_30px_rgba(55,45,120,0.06)]"
-              onSubmit={onSearch}
-            >
-              <SearchField text={text} photo={photo} onPhotoChange={setPhoto} />
-            </form>
-
             <div className="mt-10 flex flex-wrap gap-2">
               {modes.map((mode) => (
                 <ModeChip
@@ -157,6 +150,13 @@ export default function HomePage() {
                 />
               ))}
             </div>
+
+            <form
+              className="mt-10 flex h-14 items-center gap-2 rounded-full border border-[#e7e7f2] bg-white py-1.5 pr-1.5 pl-1.5 shadow-[0_10px_30px_rgba(55,45,120,0.06)]"
+              onSubmit={onSearch}
+            >
+              <SearchField text={text} photo={photo} onPhotoChange={setPhoto} />
+            </form>
           </div>
         </section>
       </div>
