@@ -30,12 +30,38 @@ const text = {
   login: '로그인',
   logout: '로그아웃',
   createFeed: '피드 생성',
+  email: '이메일',
+  password: '비밀번호',
+  signup: '회원가입',
+  forgot: '비밀번호 찾기',
+  loginNote: '피드는 로그인 후 이용할 수 있어요.',
+  close: '닫기',
+  confirmPassword: '비밀번호 확인',
+  signupSubmit: '가입하기',
+  forgotNext: '다음',
+  resetTitle: '새 비밀번호',
+  resetSubmit: '변경하기',
+  backToLogin: '로그인으로',
+  errorRequired: '필요한 항목을 입력해 주세요.',
+  errorEmail: '이메일 형식을 확인해 주세요.',
+  errorShort: '비밀번호는 8자 이상이어야 해요.',
+  errorMismatch: '비밀번호가 서로 달라요.',
+  errorExists: '이미 가입된 이메일이에요.',
+  errorInvalid: '이메일 또는 비밀번호가 올바르지 않아요.',
+  errorMissing: '가입되지 않은 이메일이에요.',
+  resetDone: '비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.',
 };
 
 const feedSlots = Array.from({ length: 12 }, (_, index) => index);
 
 export default function HomePage() {
   const [feedOpen, setFeedOpen] = useState(false);
+  const [entry, setEntry] = useState(null);
+  const [photo, setPhoto] = useState(null);
+  const [session, setSession] = useState(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [user, setUser] = useState(() => getUser());
+  const lang = 'ko';
 
   useEffect(() => {
     return () => {
@@ -94,16 +120,19 @@ export default function HomePage() {
               {text.sub}
             </p>
 
-            <form
-              className="mt-10 flex h-14 w-[calc(45vw-2.5rem)] shrink-0 items-center gap-2 self-start rounded-full border border-[#e7e7f2] bg-white py-1.5 pr-1.5 pl-1.5 shadow-[0_10px_30px_rgba(55,45,120,0.06)]"
-              onSubmit={(event) => event.preventDefault()}
-            >
-              <SearchField text={text} />
-            </form>
-
             <div className="mt-10 flex flex-wrap gap-2">
-              <ModeChip mode={modes[0]} text={text.modes.scene} />
-              <ModeChip mode={modes[1]} text={text.modes.food} />
+              <ModeChip
+                mode={modes[0]}
+                text={text.modes.scene}
+                selected={entry === 'scene'}
+                onSelect={chooseEntry}
+              />
+              <ModeChip
+                mode={modes[1]}
+                text={text.modes.food}
+                selected={entry === 'food'}
+                onSelect={chooseEntry}
+              />
               <button
                 type="button"
                 className="flex items-center gap-3 rounded-full bg-chip py-2.5 pr-5 pl-2 text-left"
@@ -118,7 +147,7 @@ export default function HomePage() {
             </div>
 
             <form
-              className="mt-10 flex h-14 items-center gap-2 rounded-full border border-[#e7e7f2] bg-white py-1.5 pr-1.5 pl-1.5 shadow-[0_10px_30px_rgba(55,45,120,0.06)]"
+              className="mt-10 flex h-14 w-[calc(45vw-2.5rem)] shrink-0 items-center gap-2 self-start rounded-full border border-[#e7e7f2] bg-white py-1.5 pr-1.5 pl-1.5 shadow-[0_10px_30px_rgba(55,45,120,0.06)]"
               onSubmit={onSearch}
             >
               <SearchField text={text} photo={photo} onPhotoChange={setPhoto} />
@@ -129,6 +158,12 @@ export default function HomePage() {
 
       <FeedPanel
         open={feedOpen}
+        loggedIn={Boolean(user)}
+        onLogin={() => setLoginOpen(true)}
+        onLogout={() => {
+          logout();
+          setUser(null);
+        }}
         onToggle={() => setFeedOpen((open) => !open)}
       />
       {loginOpen ? (
@@ -149,9 +184,8 @@ export default function HomePage() {
   );
 }
 
-function FeedPanel({ open, onToggle }) {
+function FeedPanel({ open, loggedIn, onLogin, onLogout, onToggle }) {
   const [tab, setTab] = useState(0);
-  const [loggedIn, setLoggedIn] = useState(false);
   const [searched, setSearched] = useState(false);
   const currentTab = text.feedTabs[tab];
   const loginGate =
@@ -242,11 +276,8 @@ function FeedPanel({ open, onToggle }) {
           <ProfileMenu
             panelOpen={open}
             loggedIn={loggedIn}
-            onLogin={() => {
-              setLoggedIn(true);
-              setSearched(false);
-            }}
-            onLogout={() => setLoggedIn(false)}
+            onLogin={onLogin}
+            onLogout={onLogout}
           />
         </div>
         {loginGate ? (
@@ -363,7 +394,7 @@ function ProfileIcon() {
   );
 }
 
-function SearchField({ text }) {
+function SearchField({ text, photo = null, onPhotoChange }) {
   const inputRef = useRef(null);
 
   function onFile(event) {
@@ -458,8 +489,8 @@ function ModeChip({ mode, text, selected, onSelect }) {
       type="button"
       data-entry={mode.id}
       aria-pressed={selected}
-      onClick={() => onSelect(mode.id)}
-      className={`flex items-center gap-3 rounded-full py-2.5 pr-5 pl-2 text-left ${selected ? 'bg-[#efeaff] ring-2 ring-violet' : 'bg-chip'}`}
+      onClick={() => onSelect?.(mode.id)}
+      className={`flex items-center gap-3 rounded-full border-2 py-2.5 pr-5 pl-2 text-left ${selected ? 'border-violet bg-[#efeaff]' : 'border-transparent bg-chip'}`}
     >
       <span className="grid size-11 place-items-center rounded-full bg-white text-ink shadow-[0_2px_8px_rgba(40,30,90,0.06)] [&_svg]:size-6">
         <Icon />
