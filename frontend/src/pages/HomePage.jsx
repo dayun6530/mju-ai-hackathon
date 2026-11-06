@@ -258,7 +258,9 @@ const copy = {
   },
 };
 
-const feedSlots = Array.from({ length: 12 }, (_, index) => index);
+const feedSlots = Array.from({ length: 9 }, (_, index) => index);
+const feedGridClass =
+  'mt-4 grid min-h-0 flex-1 auto-rows-max grid-cols-[repeat(auto-fill,minmax(148px,1fr))] content-start gap-3 overflow-y-auto pr-1 pb-1';
 
 export default function HomePage() {
   const [feedOpen, setFeedOpen] = useState(false);
@@ -695,7 +697,7 @@ function FeedPanel({ open, text, loggedIn, mine, explore, saved, feedFocus, onUp
             blankEmpty
           />
         ) : explore.length === 0 ? (
-          <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
+          <div className={feedGridClass}>
             {feedSlots.map((slot) => (
               <div key={slot} className="aspect-[3/4] rounded-2xl bg-[#e7e9f2]" />
             ))}
@@ -744,17 +746,19 @@ function MyFeed({ text, posts, onOpen, blankEmpty = false }) {
   }
 
   return (
-    <div className="mt-4 grid flex-1 grid-cols-4 content-start gap-3 overflow-y-auto pr-1">
+    <div className={feedGridClass}>
       {posts.map((post) => (
         <button
           key={post.id}
           type="button"
           onClick={() => onOpen(post.id)}
-          className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#e7e9f2] text-left"
+          className="flex min-w-0 flex-col overflow-hidden rounded-2xl bg-white text-left shadow-[0_1px_0_rgba(40,30,90,0.04)] ring-1 ring-[#ececf3]"
         >
-          <img src={post.url} alt="" className="size-full object-cover" />
+          <span className="relative block aspect-[3/4] overflow-hidden bg-[#e7e9f2]">
+            <img src={post.url} alt="" className="absolute inset-0 size-full object-cover" />
+          </span>
           {post.caption ? (
-            <span className="absolute inset-x-0 bottom-0 line-clamp-2 bg-black/45 px-2 py-1.5 text-[10px] leading-4 font-medium text-white">
+            <span className="line-clamp-2 px-2.5 py-2 text-[11px] leading-4 font-medium text-[#2c2748]">
               {post.caption}
             </span>
           ) : null}
@@ -788,14 +792,14 @@ function PostDetail({ text, post, onClose, onUpdate }) {
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-end pr-6">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45 p-6">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={text.postDetail}
-        className="relative grid h-[min(760px,90vh)] w-[min(760px,54vw)] grid-cols-[1.15fr_0.85fr] overflow-hidden rounded-[28px] bg-white text-black shadow-[0_24px_80px_rgba(20,16,50,0.28)]"
+        className="relative grid h-[min(720px,calc(100vh-48px))] w-[min(920px,calc(100vw-48px))] grid-cols-1 overflow-hidden rounded-[28px] bg-white text-black shadow-[0_24px_80px_rgba(20,16,50,0.28)] sm:grid-cols-[minmax(0,1.05fr)_minmax(240px,0.85fr)]"
       >
-        <div className="relative h-full min-h-0">
+        <div className="relative h-56 min-h-0 sm:h-full">
           <img src={post.url} alt="" className="h-full w-full object-cover" />
           <button
             type="button"

@@ -515,15 +515,256 @@ function wikiHost(query) {
   return /[가-힣]/.test(query) ? 'ko.wikipedia.org' : 'en.wikipedia.org'
 }
 
-async function placePhoto(place) {
-  const names = [place.name_ko, place.name_en].filter(Boolean)
-  for (const query of photoQueries(names).slice(0, 2)) {
-    const photo = await wikiPhoto(wikiHost(query), [query, ...names])
-    if (photo) return photo
+const FOOD_WORD = /^(떡볶이|tteokbokki|치킨|chicken|칼국수|분식|김밥|라면|국수|고기|찌개|국밥|냉면|비빔밥|삼겹살|순대|튀김|만두|카페|식당|음식점|맛집)$/u
+
+function distinctiveTokens(names) {
+  return nameTokens(names).filter((word) => !FOOD_WORD.test(word))
+}
+
+function matchesPlace(title, names) {
+  const tokens = distinctiveTokens(names)
+  const page = String(title || '').toLowerCase().replace(/[_\-.]/g, ' ')
+  if (tokens.length) return tokens.some((word) => page.includes(word))
+  return titleScore(title, names) >= 0.8
+}
+
+async function wikiRequest(host, params) {
+  const gap = 700 - (Date.now() - lastWikiAt)
+  if (gap > 0) await wait(gap)
+  lastWikiAt = Date.now()
+  const url = new URL(`https://${host}/w/api.php`)
+  url.searchParams.set('action', 'query')
+  url.searchParams.set('format', 'json')
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value)
+  let response = await fetch(url, {
+    headers: WIKI_HEADERS,
+    signal: AbortSignal.timeout(6000),
+  })
+  if (response.status === 429) {
+    await wait(2500)
+    response = await fetch(url, {
+      headers: WIKI_HEADERS,
+      signal: AbortSignal.timeout(6000),
+    })
   }
-  const fromPage = await sourceImage(place.source_url)
-  if (fromPage && !genericSiteImage(fromPage) && !(await isPersonImage(fromPage))) return fromPage
-  return ''
+  if (!response.ok) return null
+  return response.json()
+}
+
+function imageFileUrl(page) {
+  const info = page?.imageinfo?.[0]
+  const mime = String(info?.mime || '')
+  if (mime && !/^image\/(jpeg|png|webp)$/i.test(mime)) return ''
+  return usablePhoto(info?.thumburl || info?.url || '')
+}
+
+async function commonsCandidates(query, names) {
+  const data = await wikiRequest('commons.wikimedia.org', {
+    generator: 'search',
+    gsrsearch: query,
+    gsrnamespace: '6',
+    gsrlimit: '8',
+    prop: 'imageinfo',
+    iiprop: 'url|mime',
+    iiurlwidth: '640',
+  })
+  return Object.values(data?.query?.pages || {})
+    .map((page) => ({ title: page.title || '', url: imageFileUrl(page) }))
+    .filter((page) => page.url && matchesPlace(page.title, names) && !isPersonPage(page.title, []))
+    .filter((page) => !/map|locator|diagram|logo|icon|flag|지도|문장|깃발/i.test(page.title))
+    .map((page) => page.url)
+}
+
+async function nearbyCandidates(lat, lng, names) {
+  if (!lat || !lng) return []
+  const data = await wikiRequest('commons.wikimedia.org', {
+    generator: 'geosearch',
+    ggscoord: `${lat}|${lng}`,
+    ggsradius: '180',
+    ggslimit: '8',
+    prop: 'imageinfo',
+    iiprop: 'url|mime',
+    iiurlwidth: '640',
+  })
+  const pages = Object.values(data?.query?.pages || {})
+    .map((page) => ({ title: page.title || '', url: imageFileUrl(page) }))
+    .filter((page) => page.url && !isPersonPage(page.title, []))
+    .filter((page) => !/map|locator|diagram|logo|icon|flag|지도|문장|깃발/i.test(page.title))
+  const named = pages.filter((page) => matchesPlace(page.title, names)).map((page) => page.url)
+  const nearby = pages.filter((page) => !matchesPlace(page.title, names)).map((page) => page.url)
+  return [...named, ...nearby]
+}
+
+async function wikiPlaceCandidates(host, query, names) {
+  const data = await wikiRequest(host, {
+    generator: 'search',
+    gsrsearch: query,
+    gsrlimit: '5',
+    gsrnamespace: '0',
+    prop: 'pageimages|categories',
+    piprop: 'thumbnail',
+    pithumbsize: '640',
+    cllimit: '20',
+    clshow: '!hidden',
+  })
+  return Object.values(data?.query?.pages || {})
+    .filter((page) => {
+      const categories = (page.categories || []).map((item) => item.title)
+      return matchesPlace(page.title, names) && !isPersonPage(page.title, categories)
+    })
+    .map((page) => usablePhoto(page.thumbnail?.source || ''))
+    .filter(Boolean)
+}
+
+export const articleCache = new Map()
+
+function pushPhoto(found, pageUrl, value) {
+  const raw = String(value || '').trim()
+  if (!raw) return
+  let url = ''
+  try {
+    url = usablePhoto(new URL(raw, pageUrl).href)
+  } catch {
+    url = ''
+  }
+  if (!url || genericSiteImage(url) || found.includes(url)) return
+  if (/\b(logo|icon|sprite|emoji|avatar|profile|banner|button|btn)\b/i.test(url)) return
+  if (/(\/|_)(1x1|pixel|blank|spacer)/i.test(url)) return
+  found.push(url)
+}
+
+async function articleImages(pageUrl) {
+  if (!/^https?:\/\//i.test(pageUrl || '')) return []
+  if (articleCache.has(pageUrl)) return articleCache.get(pageUrl)
+  const found = []
+  try {
+    const response = await fetch(pageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        Accept: 'text/html',
+      },
+      signal: AbortSignal.timeout(5000),
+      redirect: 'follow',
+    })
+    if (response.ok) {
+      const html = (await response.text()).slice(0, 220000)
+      const og = html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i)
+        || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i)
+      if (og) pushPhoto(found, response.url, og[1])
+      for (const tag of html.match(/<img\b[^>]*>/gi) || []) {
+        const width = Number(tag.match(/\bwidth=["']?(\d+)/i)?.[1] || 0)
+        if (width && width < 180) continue
+        const src = tag.match(/\b(?:data-src|data-lazy-src|data-original|src)=["']([^"']+)["']/i)?.[1]
+        pushPhoto(found, response.url, src)
+      }
+    }
+  } catch {
+    found.length = 0
+  }
+  const images = found.slice(0, 8)
+  articleCache.set(pageUrl, images)
+  return images
+}
+
+function firstFresh(urls, used) {
+  return urls.find((url) => url && !used.has(url) && !genericSiteImage(url)) || ''
+}
+
+function brandPrefix(name) {
+  const compact = String(name || '').replace(/\s/g, '')
+  const cut = compact.split(/떡볶기|떡볶이|치킨|분식|카페|국수|김밥|냉면|국밥|찌개/)[0]
+  return (cut || compact).slice(0, 8)
+}
+
+function naverQueries(name) {
+  const compact = String(name || '').replace(/\s/g, '')
+  const split = compact.match(/^(.*?)(떡볶기|떡볶이|치킨|분식|카페|국수|김밥|냉면|국밥|찌개)/)
+  const spaced = split?.[1] && split[2] ? `${split[1]} ${split[2]}` : ''
+  return [...new Set([compact, spaced].filter((query) => query.length >= 2))]
+}
+
+function addressHints(address) {
+  return String(address || '').match(/[가-힣]{2,}(?:로|길|대로)\d*(?:번길)?/g) || []
+}
+
+const NAVER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+  Accept: 'application/json',
+  Referer: 'https://map.naver.com/',
+}
+const SEOUL_COORDS = '37.5665,126.9780'
+
+async function naverRows(query, coords) {
+  const url = new URL('https://map.naver.com/p/api/search/instant-search')
+  url.searchParams.set('query', query)
+  url.searchParams.set('coords', coords)
+  const response = await fetch(url, { headers: NAVER_HEADERS, signal: AbortSignal.timeout(5000) })
+  if (!response.ok) return []
+  const data = await response.json()
+  return Array.isArray(data.place) ? data.place : []
+}
+
+function naverScore(row, prefix, hints) {
+  const title = String(row.title || '').replace(/\s/g, '')
+  if (!row.id || prefix.length < 2 || !title.includes(prefix)) return 0
+  const blob = `${row.title || ''} ${row.roadAddress || ''} ${row.jibunAddress || ''}`.replace(/\s/g, '')
+  let score = 1
+  for (const hint of hints) {
+    if (blob.includes(hint.replace(/\s/g, ''))) score += 5
+  }
+  const dist = Number(row.dist)
+  if (Number.isFinite(dist)) score += Math.max(0, 2 - dist / 4)
+  return score
+}
+
+async function naverPlacePhoto(place) {
+  const name = place.name_ko || place.name_en
+  if (!name) return ''
+  const coords = place.lat && place.lng ? `${place.lat},${place.lng}` : SEOUL_COORDS
+  const prefix = brandPrefix(name)
+  const hints = addressHints(place.address_ko)
+  try {
+    const rows = []
+    for (const query of naverQueries(name)) {
+      rows.push(...await naverRows(query, coords))
+    }
+    let best = null
+    let bestScore = 0
+    const seen = new Set()
+    for (const row of rows) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      const score = naverScore(row, prefix, hints)
+      if (score > bestScore) {
+        best = row
+        bestScore = score
+      }
+    }
+    if (!best?.id) return ''
+    const summary = await fetch(`https://map.naver.com/p/api/place/summary/${best.id}`, {
+      headers: NAVER_HEADERS,
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!summary.ok) return ''
+    const body = await summary.json()
+    const images = body?.data?.placeDetail?.images?.images || []
+    return usablePhoto(images[0]?.origin || images[0]?.originalUrl || '')
+  } catch {
+    return ''
+  }
+}
+
+export async function placePhoto(place, used = new Set()) {
+  const naver = await naverPlacePhoto(place)
+  if (naver && !used.has(naver)) return naver
+  const names = [place.name_ko, place.name_en].filter(Boolean)
+  for (const query of photoQueries(names).slice(0, 1)) {
+    const named = firstFresh(await wikiPlaceCandidates(wikiHost(query), query, names), used)
+    if (named) return named
+  }
+  const fromArticle = firstFresh(await articleImages(place.source_url), used)
+  if (fromArticle) return fromArticle
+  return firstFresh(await nearbyCandidates(place.lat, place.lng, names), used)
 }
 
 function genericSiteImage(url) {
@@ -543,12 +784,21 @@ async function geocode(query, language) {
   url.searchParams.set('addressdetails', '1')
   url.searchParams.set('countrycodes', 'kr')
   url.searchParams.set('q', query)
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     headers: {
       'User-Agent': 'STOS-hackathon/1.0 (school project)',
       'Accept-Language': language,
     },
   })
+  if (response.status === 429 || response.status === 503) {
+    await wait(1500)
+    response = await fetch(url, {
+      headers: {
+        'User-Agent': 'STOS-hackathon/1.0 (school project)',
+        'Accept-Language': language,
+      },
+    })
+  }
   if (!response.ok) return []
   const rows = await response.json()
   return Array.isArray(rows) ? rows : []
@@ -1049,6 +1299,7 @@ export async function handleAnalyze(req, res, root) {
           const places = []
           const seen = new Set()
           const brands = new Set()
+          const usedImages = new Set()
           for (const raw of rawPlaces) {
             const nameKo = textField(raw, 'name', 'ko')
             const nameEn = textField(raw, 'name', 'en')
@@ -1102,7 +1353,8 @@ export async function handleAnalyze(req, res, root) {
               why_zh: textField(raw, 'why', 'zh'),
               why_ja: textField(raw, 'why', 'ja'),
             }
-            place.image = await placePhoto(place)
+            place.image = await placePhoto(place, usedImages)
+            if (place.image) usedImages.add(place.image)
             places.push(place)
             if (places.length === 4) break
           }
@@ -1124,14 +1376,6 @@ export async function handleAnalyze(req, res, root) {
               food = foodNotesFor(kind, `${asked}\n${clue}`, await describeDish(key, `${asked}\n${clue}`)) || food
             } catch (error) {
               console.error('dish notes failed', error?.message)
-            }
-          }
-          if (places.some((place) => !place.image)) {
-            const fallback = await dishPhoto(food)
-            if (fallback) {
-              for (const place of places) {
-                if (!place.image) place.image = fallback
-              }
             }
           }
           send(res, 200, {

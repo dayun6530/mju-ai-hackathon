@@ -99,6 +99,21 @@ function dietWarnings(food, lang) {
   })
 }
 
+function dietItems(food, lang, copy) {
+  const notes = Array.isArray(food?.diet) ? food.diet : []
+  const fromNotes = notes
+    .map((item) => {
+      const note = item[`note_${lang}`] || item.note_en || item.note_ko || ''
+      return note ? { who: item.who, note } : null
+    })
+    .filter(Boolean)
+  if (fromNotes.length) return fromNotes
+  return dietWarnings(food, lang).map((item) => ({
+    who: item.who,
+    note: copy.avoid(item.items.join(', ')),
+  }))
+}
+
 const UI = {
   en: {
     home: 'Home',
@@ -142,6 +157,8 @@ const UI = {
     read: 'Read it as',
     orderRead: 'Read the order as',
     means: 'It means',
+    dietFallback: 'Vegan diets usually avoid meat, fish cake, egg, and meat broth. Halal diets avoid pork and alcohol. Hindu diets avoid beef. Ask the restaurant before you order.',
+    orderMissing: 'Show the Korean dish name and ask for one serving.',
     foodTitle: 'About this food',
     similarNote: 'A similar experience, not a confirmed filming location.',
     needKey: 'The Groq key could not be loaded from Supabase. Restart the dev server.',
@@ -200,6 +217,8 @@ const UI = {
     read: '이렇게 읽어요',
     orderRead: '주문은 이렇게 읽어요',
     means: '뜻',
+    dietFallback: '비건은 고기·어묵·달걀·육수, 할랄은 돼지고기와 술, 힌두교는 소고기를 확인해야 합니다. 주문 전에 매장에 물어보세요.',
+    orderMissing: '음식 이름을 보여 주고 하나 달라고 주문해 주세요.',
     foodTitle: '이 음식',
     similarNote: '확인된 촬영지가 아니라 비슷한 경험입니다.',
     needKey: 'Groq 키를 Supabase에서 불러오지 못했습니다. 개발 서버를 다시 시작해 주세요.',
@@ -258,6 +277,8 @@ const UI = {
     read: '这样读',
     orderRead: '点餐罗马字',
     means: '意思是',
+    dietFallback: '纯素通常不吃肉、鱼饼、鸡蛋和肉汤。清真不吃猪肉和酒。印度教不吃牛肉。点餐前请向店员确认。',
+    orderMissing: '出示韩文菜名，并要一份。',
     foodTitle: '这道菜',
     similarNote: '这是相近的体验，不是已确认的拍摄地。',
     needKey: '无法从 Supabase 读取 Groq 密钥。请重启开发服务器。',
@@ -316,6 +337,8 @@ const UI = {
     read: 'こう読みます',
     orderRead: '注文はこう読みます',
     means: '意味',
+    dietFallback: 'ビーガンは肉・さつま揚げ・卵・肉の出汁、ハラールは豚肉と酒、ヒンドゥーは牛肉を確認してください。注文前に店へ聞いてください。',
+    orderMissing: '韓国語の料理名を見せて、一つくださいと注文してください。',
     foodTitle: 'この料理',
     similarNote: '確認されたロケ地ではなく、近い体験です。',
     needKey: 'SupabaseからGroqキーを読み込めませんでした。開発サーバーを再起動してください。',
@@ -434,29 +457,29 @@ function RouteMap({ places, selected, onSelect }) {
   return <div ref={node} className="map-canvas" />
 }
 
-function FoodNotes({ food, copy, lang }) {
-  if (!food) return null
+function FoodNotes({ food, copy, lang, always = false }) {
   const what = textOf(food, lang, 'what')
-  const eaten = listOf(food, lang, 'eaten_with')
-  const ingredients = listOf(food, lang, 'ingredients')
-  const warnings = dietWarnings(food, lang)
-  const dish = textOf(food, lang, 'name') || food.name_ko
+  const eaten = food ? listOf(food, lang, 'eaten_with') : []
+  const ingredients = food ? listOf(food, lang, 'ingredients') : []
+  const warnings = food ? dietItems(food, lang, copy) : []
+  const dish = textOf(food, lang, 'name') || food?.name_ko || ''
   const meaning = lang === 'ko' ? '' : textOf(food, lang, 'order')
-  if (!dish && !what && !food.order_ko && !eaten.length && !ingredients.length) return null
+  const orderKo = food?.order_ko || ''
+  const roman = food?.order_romanization || ''
+  if (!always && !dish && !what && !orderKo && !roman && !eaten.length && !ingredients.length && !warnings.length) return null
   return (
     <section className="food-notes">
       <p className="food-kicker">{copy.foodTitle}</p>
-      <h2>{dish}</h2>
-      {food.romanization && <p className="read-as">{copy.read}: {food.romanization}</p>}
+      {dish && <h2>{dish}</h2>}
+      {food?.romanization && <p className="read-as">{copy.read}: {food.romanization}</p>}
       {what && <p>{what}</p>}
-      {(food.order_ko || food.order_romanization) && (
-        <div className="order">
-          <h3>{copy.say}</h3>
-          {food.order_ko && <p className="order-ko">“{food.order_ko}”</p>}
-          {food.order_romanization && <p className="order-read">{copy.orderRead}: {food.order_romanization}</p>}
-          {meaning && <p className="order-mean">{copy.means}: {meaning}</p>}
-        </div>
-      )}
+      <div className="order">
+        <h3>{copy.say}</h3>
+        {orderKo && <p className="order-ko">“{orderKo}”</p>}
+        {roman && <p className="order-read">{copy.orderRead}: {roman}</p>}
+        {meaning && <p className="order-mean">{copy.means}: {meaning}</p>}
+        {!orderKo && !roman && <p>{copy.orderMissing}</p>}
+      </div>
       {eaten.length > 0 && (
         <>
           <h3>{copy.with}</h3>
@@ -469,17 +492,17 @@ function FoodNotes({ food, copy, lang }) {
           <p>{ingredients.join(', ')}</p>
         </>
       )}
-      {warnings.length > 0 && (
-        <>
-          <h3>{copy.diet}</h3>
-          <ul>
-            {warnings.map((item) => (
-              <li key={item.who}>
-                <strong>{DIET_LABEL[lang]?.[item.who] || item.who}.</strong> {copy.avoid(item.items.join(', '))}
-              </li>
-            ))}
-          </ul>
-        </>
+      <h3>{copy.diet}</h3>
+      {warnings.length > 0 ? (
+        <ul>
+          {warnings.map((item) => (
+            <li key={item.who}>
+              <strong>{DIET_LABEL[lang]?.[item.who] || item.who}.</strong> {item.note}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>{copy.dietFallback}</p>
       )}
     </section>
   )
@@ -867,7 +890,6 @@ export default function App({ session = null, onHome = null }) {
       {screen === 'results' && current && (
         <main className="results">
           <aside className="recommend">
-            <FoodNotes food={result.food} copy={copy} lang={lang} />
             <h2>{copy.picks(places.length)}</h2>
             {places.map((place, index) => {
               const name = textOf(place, lang, 'name')
@@ -913,13 +935,15 @@ export default function App({ session = null, onHome = null }) {
 
       {screen === 'detail' && current && (
         <main className="detail">
-          <PlacePhoto className="cover" src={current.image || photo || heroPhoto} fallback={heroPhoto} alt={placeName} />
+          <PlacePhoto className="cover" src={current.image} alt={placeName} missingLabel={copy.noPhoto} />
           <section className="detail-copy">
             <span className="badge">{badge}</span>
             <h1>{placeName}</h1>
             <p className="area"><span aria-hidden="true">⌖</span> {addressOf(current, lang)}</p>
             <p>{why || copy.similarNote}</p>
-            <FoodNotes food={result.food} copy={copy} lang={lang} />
+            {(mode === 'restaurant' || result?.kind === 'restaurant') && (
+              <FoodNotes food={result.food} copy={copy} lang={lang} always />
+            )}
             <div className="detail-actions">
               <button type="button" className="solid wide" onClick={openDirections}>{copy.directions} →</button>
               <button
